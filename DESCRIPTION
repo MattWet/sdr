@@ -1,4 +1,4 @@
-Package: stagewise
+Package: sdr
 Type: Package
 Title: Stagewise Distributional Regression
 Version: 1.0
