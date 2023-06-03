@@ -3,7 +3,7 @@ Estimation of distributional regression using an efficient stagewise algorithm
 
 All supplementary materials can be found in the R scripts
 * [simulation.R] TBA
-* [sunspots.R] TBA
+
  
 # Installation
 The R package can be installed with
