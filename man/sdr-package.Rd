@@ -1,14 +1,14 @@
-\name{stagewise-package}
-\alias{stagewise-package}
-\alias{stagewise}
+\name{sdr-package}
+\alias{sdr-package}
+\alias{sdr}
 \docType{package}
 
 \title{
-  \packageTitle{stagewise}
+  \packageTitle{sdr}
 }
 
 \description{
-  \packageDescription{stagewise}
+  \packageDescription{sdr}
 }
 
 \details{
