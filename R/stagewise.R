@@ -1,9 +1,3 @@
-# to do
-# build package
-# R CMD REMOVE stagewise
-# R CMD build stagewise
-# R CMD INSTALL stagewise_ .tar.gz``
-
 
 powerset <- function(set) {
   n <- length(set)
