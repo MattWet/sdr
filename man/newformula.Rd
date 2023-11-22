@@ -23,10 +23,10 @@ newformula(object, mstop = NULL, name = NULL)
 
 \details{
  Our stagewise framework supports a two step modelfitting procedure. The first step
- is to identify the important variabels with the standard \link{sdr} function and correlation
- filtering turned on, \code{CF = TRUE}. Then, extract the important variabels with \link{coef}\code{(..., refit = TRUE)} 
- and the updated model formula with \link{newformula}\code{(...)}. Finally, refit without correlation 
- filtering and with the updated formula and coefficients. See example below.
+ is to identify the important variabels with the standard \link{sdr} function, with the argument updating any of 
+ c("bs", "cyclic", "noncyclic") and correlation filtering turned on, \code{CF = TRUE}. Then, extract the important 
+ variabels with \link{coef}\code{(..., refit = TRUE)}  and the updated model formula with \link{newformula}\code{(...)}. 
+ Finally, refit without correlation filtering and with the updated formula and coefficients. See example below.
 }
 
 \seealso{
@@ -61,7 +61,7 @@ f <- list(f, update(f, sigma ~ .))
 
 ## Variable selection with correlation filtering
 ## and best subset updating.
-b <- sdr(formula = f, data = d, CF = TRUE,
+b <- sdr(formula = f, data = d, CF = TRUE, updating = "bs",
          family = NO, maxit = 300)
 
 
@@ -75,7 +75,7 @@ cb <- coef(b, mstop = itermax_bic, refit = TRUE)
 nf <- newformula(b, mstop = itermax_bic, name = "y")
 
 ## Refit until convergence.
-b_final <- sdr(formula = nf, data = d,
+b_final <- sdr(formula = nf, data = d, updating = "bs",
                family = NO, CF = FALSE, maxit = 300,
                coef_start = cb)
 
