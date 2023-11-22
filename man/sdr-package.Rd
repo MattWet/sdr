@@ -89,7 +89,7 @@ f <- list(f, update(f, sigma ~ .))
 
 ## Variable selection with correlation filtering
 ## and best subset updating.
-b <- sdr(formula = f, data = d, CF = TRUE,
+b <- sdr(formula = f, data = d, CF = TRUE, updating = "bs",
          family = NO, maxit = 300)
 plot(b)
 
@@ -103,7 +103,7 @@ cb <- coef(b, mstop = itermax_bic, refit = TRUE)
 nf <- newformula(b, mstop = itermax_bic, name = "y")
 
 ## Refit until convergence.
-b_final <- sdr(formula = nf, data = d,
+b_final <- sdr(formula = nf, data = d, updating = "bs",
                family = NO, CF = FALSE, maxit = 300,
                coef_start = cb)
 
@@ -120,8 +120,8 @@ pred <- predict(b_final)
 mse1 <- mean((d$y - pred$mu)^2)
 
 ## Other flavours.
-## Batchwise best subset with correlation filtering.
-b <- sdr(formula = f, data = d, family = NO, CF = TRUE,
+## Batchwise noncyclical updating with correlation filtering.
+b <- sdr(formula = f, data = d, family = NO, CF = TRUE, updating = "bs",
          maxit = 300, batch_ids = 500)
 plot(b)
 
@@ -131,7 +131,7 @@ itermax_bic <- which.min(ma(bic, order = 20))
 cb <- coef(b, mstop = itermax_bic, refit = TRUE)
 nf <- newformula(b, mstop = itermax_bic, name = "y")
 
-b_final <- sdr(formula = nf, data = d,
+b_final <- sdr(formula = nf, data = d, updating = "bs",
                family = NO, CF = FALSE, maxit = 300,
                coef_start = cb, batch_ids = 500)
 plot(b_final)
@@ -139,13 +139,10 @@ pred <- predict(b_final)
 mse2 <- mean((d$y - pred$mu)^2)
 
 
-## Batchwise non cyclic with correlation filtering.
-## length_ps = 1 means that only subsets with one element
-## are considered in the updating selection. 
-## This is equivalent to the non cyclic updating.
-b <- sdr(formula = f, data = d,
+## Batchwise non cyclic updating with correlation filtering.
+b <- sdr(formula = f, data = d, updating = "noncyclic",
          family = NO, CF = TRUE, maxit = 300,
-         batch_ids = 500, length_ps = 1)
+         batch_ids = 500)
 plot(b)
 
 bic <- BIC(b)
@@ -154,13 +151,26 @@ itermax_bic <- which.min(ma(bic, order = 20))
 cb <- coef(b, mstop = itermax_bic, refit = TRUE)
 nf <- newformula(b, mstop = itermax_bic, name = "y") 
 
-b_final <- sdr(formula = nf, data = d,
+b_final <- sdr(formula = nf, data = d, updating = "noncyclic",
                family = NO, CF = FALSE, maxit = 300,
-               coef_start = cb, batch_ids = 500, length_ps = 1)
+               coef_start = cb, batch_ids = 500)
 plot(b_final)
 pred <- predict(b_final)
 mse3 <- mean((d$y - pred$mu)^2)
 
-c(mse1,mse2,mse3)
+## Batchwise threshold descent with best subset updating.
+## K is penalty parameter in BIC, i.e. BIC = -2*logLik + df*K
+batch_ids = 500
+b <- sdr(formula = f, data = d, updating = "thresdesc",
+         family = NO, CF = TRUE, maxit = 100, ncaps = 10,
+         batch_ids = batch_ids, K = log(batch_ids))
+# Coef-paths from refitting of best model
+plot(b, which = "coefficients")
+
+pred <- predict(b)
+mse4 <- mean((d$y - pred$mu)^2)
+
+c(mse1,mse2,mse3,mse4)
+
 }
 }
