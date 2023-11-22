@@ -65,7 +65,7 @@ f <- list(f, update(f, sigma ~ .))
 
 ## Variable selection with correlation filtering
 ## and best subset updating.
-b <- sdr(formula = f, data = d, CF = TRUE,
+b <- sdr(formula = f, data = d, CF = TRUE, updating = "bs",
          family = NO, maxit = 300)
 
 ## Determine early stopping through BIC.
@@ -78,7 +78,7 @@ cb <- coef(b, mstop = itermax_bic, refit = TRUE)
 nf <- newformula(b, mstop = itermax_bic, name = "y")
 
 ## Refit until convergence.
-b_final <- sdr(formula = nf, data = d,
+b_final <- sdr(formula = nf, data = d, updating = "bs",
                family = NO, CF = FALSE, maxit = 300,
                coef_start = cb)
 
