@@ -80,7 +80,7 @@ f <- list(f, update(f, sigma ~ .))
 
 ## Variable selection with correlation filtering
 ## and best subset updating.
-b <- sdr(formula = f, data = d, CF = TRUE,
+b <- sdr(formula = f, data = d, CF = TRUE, updating = "bs",
          family = NO, maxit = 300)
 
 bic <- BIC(b)
