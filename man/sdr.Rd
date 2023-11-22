@@ -15,12 +15,13 @@
 
 \usage{
 ## Model fitting function.
-sdr(formula, family = NULL, data = NULL, weights = NULL, batch_ids = NULL,
-  cyclic = FALSE, subset = NULL, offset = NULL, contrasts = NULL, model = TRUE, 
-  CF = FALSE, cap = NULL,  scalex = TRUE, boost = TRUE,
-  eps = 0.01, nu = 0.1, ...)
+sdr(formula, family = NULL, data = NULL, batch_ids = NULL,
+  updating = "thresdesc", light = FALSE,
+  CF = TRUE, cap = NULL,  caps = NULL,  scalex = TRUE, refitting = TRUE,
+  eps = 0.01, nu = 0.1, ncaps = 10, quick_ffdf = FALSE, ...)
 
 }
+
 
 \arguments{
   \item{formula}{A formula or extended formula, i.e., the formula can be a
@@ -29,31 +30,33 @@ sdr(formula, family = NULL, data = NULL, weights = NULL, batch_ids = NULL,
   \item{family}{A family object (based on the family objects of the \pkg{bamlss} package),
     specifying the details of the modeled distribution such as the parameter names,
     the density function, link functions, etc.}
-  \item{data}{A data.frame or list containing the model response variable(s) and covariates
+  \item{data}{A data.frame containing the model response variable(s) and covariates
     specified in the formula. By default the variables are taken from environment(formula):
-    typically the environment from which \code{sdr} is called.}
-  \item{weights}{Prior weights on the data.}
+    typically the environment from which \code{sdr} is called. Full support for the \pkg{ff} package. 
+    The package \pkg{bigmemory} is only half supported, meaning if a big.matrix is used as input, then 
+    big.matrix must contain all final covariates (e.g. interactions) of the formula. Also, big.matrix requires
+    pre scaled covariates.}
   \item{batch_ids}{Either a number for the batchsize for automatically generating 
-  random batches or a list of vectors, where each vector corresponds to sample ids.}
-  \item{cyclic}{Logical, if \code{cyclic = TRUE}, cyclic boosting is used for updating.}
-  \item{subset}{An optional vector specifying a subset of observations to be used
-    in the fitting process.}
-  \item{offset}{Can be used to supply model offsets for use in fitting.}
-  \item{contrasts}{An optional list. See the contrasts.arg of model.matrix.default.}
-  \item{model}{Logical, if set to \code{model = FALSE}, the model frame used for modeling is
+    random batches or a list of vectors, where each vector corresponds to sample ids.}
+  \item{updating}{What updating should be used? Grid search over correlation filtering thresholds with best subset updating 
+    "thresdesc", best subset updating "bs", cyclical updating "cyclic" or noncyclical updating "noncyclic".}
+  \item{light}{Logical, if set to \code{light = FALSE}, the model frame used for modeling is
     not part of the return value.}
-  \item{CF}{Logical for correlation filtering on or off. Works only with \code{boost = T}}
-  \item{cap}{Threshold value for correlation filtering. If \code{CF = TRUE}, then \code{cap = NULL} 
-  leads to automatically setting the threshold value. Setting the threshold value manually 
-  overrides the automatic selection for cap.}
-  \item{scalex}{Logical, standardize covariates.}
-  \item{boost}{Logical, specify \code{boost = TRUE} and \code{cyclic = FALSE}
-    for best subset boosting, \code{boost = TRUE} and \code{cyclic = TRUE} for cyclical
-    boosting or \code{boost = FALSE} for backfitting updating (updating of every parameter in 
-    every iteration).}
+  \item{CF}{Logical for correlation filtering on or off. }
+  \item{cap}{Threshold value for correlation filtering. If \code{CF = TRUE} and \code{cap = NULL} 
+    leads to automatically setting the threshold value. Setting the threshold value manually 
+    overrides the automatic selection for cap.}
+  \item{caps}{Only relevant if \code{updating = "threshdesc"}. Explicitly defines different cap values in grid search.
+    \code{caps = NULL} then the range is automatically set.}
+  \item{scalex}{Logical, standardization of covariates.}
+  \item{refitting}{Logical, only relevant if \code{updating = "threshdesc"}. Should a refitting be carried out after selection 
+    step? If FALSE, models are used directly at variable selection step.}
  \item{eps}{Steplength parameter for coefficients.}
  \item{nu}{Shrinkage parameter to define the range for the clipping for coefficients.}
+ \item{ncaps}{Only relevant if \code{updating = "threshdesc"}. How many different cap values should be used in threshold descent? }
  \item{\dots}{Arguments passed to the fitting function.}
+ \item{quick_ffdf}{Logical, if FALSE and ff data.frame is provided, then a ff model.matrix is created. Otherwise ff data.frame 
+   must be a model.matrix containing all covariates. }
 }
 
 \author{
@@ -139,7 +142,7 @@ f <- list(f, update(f, sigma ~ .))
 
 ## Variable selection with correlation filtering
 ## and best subset updating.
-b <- sdr(formula = f, data = d, CF = TRUE,
+b <- sdr(formula = f, data = d, CF = TRUE, updating = "bs",
          family = NO, maxit = 300)
 plot(b)
 
@@ -153,7 +156,7 @@ cb <- coef(b, mstop = itermax_bic, refit = TRUE)
 nf <- newformula(b, mstop = itermax_bic, name = "y")
 
 ## Refit until convergence.
-b_final <- sdr(formula = nf, data = d,
+b_final <- sdr(formula = nf, data = d, updating = "bs",
                family = NO, CF = FALSE, maxit = 300,
                coef_start = cb)
 
@@ -170,8 +173,8 @@ pred <- predict(b_final)
 mse1 <- mean((d$y - pred$mu)^2)
 
 ## Other flavours.
-## Batchwise best subset with correlation filtering.
-b <- sdr(formula = f, data = d, family = NO, CF = TRUE,
+## Batchwise noncyclical updating with correlation filtering.
+b <- sdr(formula = f, data = d, family = NO, CF = TRUE, updating = "bs",
          maxit = 300, batch_ids = 500)
 plot(b)
 
@@ -181,7 +184,7 @@ itermax_bic <- which.min(ma(bic, order = 20))
 cb <- coef(b, mstop = itermax_bic, refit = TRUE)
 nf <- newformula(b, mstop = itermax_bic, name = "y")
 
-b_final <- sdr(formula = nf, data = d,
+b_final <- sdr(formula = nf, data = d, updating = "bs",
                family = NO, CF = FALSE, maxit = 300,
                coef_start = cb, batch_ids = 500)
 plot(b_final)
@@ -189,13 +192,10 @@ pred <- predict(b_final)
 mse2 <- mean((d$y - pred$mu)^2)
 
 
-## Batchwise non cyclic with correlation filtering.
-## length_ps = 1 means that only subsets with one element
-## are considered in the updating selection. 
-## This is equivalent to the non cyclic updating.
-b <- sdr(formula = f, data = d,
+## Batchwise non cyclic updating with correlation filtering.
+b <- sdr(formula = f, data = d, updating = "noncyclic",
          family = NO, CF = TRUE, maxit = 300,
-         batch_ids = 500, length_ps = 1)
+         batch_ids = 500)
 plot(b)
 
 bic <- BIC(b)
@@ -204,14 +204,26 @@ itermax_bic <- which.min(ma(bic, order = 20))
 cb <- coef(b, mstop = itermax_bic, refit = TRUE)
 nf <- newformula(b, mstop = itermax_bic, name = "y") 
 
-b_final <- sdr(formula = nf, data = d,
+b_final <- sdr(formula = nf, data = d, updating = "noncyclic",
                family = NO, CF = FALSE, maxit = 300,
-               coef_start = cb, batch_ids = 500, length_ps = 1)
+               coef_start = cb, batch_ids = 500)
 plot(b_final)
 pred <- predict(b_final)
 mse3 <- mean((d$y - pred$mu)^2)
 
-c(mse1,mse2,mse3)
+## Batchwise threshold descent with best subset updating.
+## K is penalty parameter in BIC, i.e. BIC = -2*logLik + df*K
+batch_ids = 500
+b <- sdr(formula = f, data = d, updating = "thresdesc",
+         family = NO, CF = TRUE, maxit = 100, ncaps = 10,
+         batch_ids = batch_ids, K = log(batch_ids))
+# Coef-paths from refitting of best model
+plot(b, which = "coefficients")
+
+pred <- predict(b)
+mse4 <- mean((d$y - pred$mu)^2)
+
+c(mse1,mse2,mse3,mse4)
 }
 }
 
