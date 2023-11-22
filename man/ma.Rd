@@ -56,7 +56,7 @@ f <- as.formula(paste("y ~ ",
 f <- list(f, update(f, sigma ~ .))
 
 ## Batchwise best subset with correlation filtering.
-b <- sdr(formula = f, data = d, family = NO, CF = TRUE,
+b <- sdr(formula = f, data = d, family = NO, CF = TRUE, updating = "bs",
          maxit = 300, batch_ids = 500)
 plot(b)
 
@@ -67,7 +67,7 @@ cb <- coef(b, mstop = itermax_bic, refit = TRUE)
 nf <- newformula(b, mstop = itermax_bic, name = "y")
 
 b_final <- sdr(formula = nf, data = d,
-               family = NO, CF = FALSE, maxit = 300,
+               family = NO, CF = FALSE, maxit = 300, updating = "bs",
                coef_start = cb, batch_ids = 500)
 plot(b_final)
 }
