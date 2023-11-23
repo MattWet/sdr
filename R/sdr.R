@@ -673,9 +673,9 @@ alpha2cap2 <-
            nvars = NULL,
            mean = 0) {
     t <- (1 - alpha) ^ (1 / nvars)
+    if(mean != 0){
     p <- function(cap) {
-      pnorm(cap, mean = mean, sd = 1 / sqrt(nnobs)) - pnorm(-cap, mean = mean, sd = 1 /
-                                                              sqrt(nnobs))
+      pnorm(cap, mean = mean, sd = sqrt(nnobs)/(nnobs-1)) - pnorm(-cap, mean = mean, sd = sqrt(nnobs)/(nnobs-1))
     }
     vec <- 0:40000 / 1e+05
     s <- sapply(
@@ -684,6 +684,9 @@ alpha2cap2 <-
         abs(p(i) - t)
     )
     cap <- vec[which.min(s)]
+    } else {
+      cap <- qnorm((1+t)/2) * sqrt(nnobs)/(nnobs-1)
+    }
     return(cap)
   }
 
