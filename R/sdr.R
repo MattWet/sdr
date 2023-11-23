@@ -887,7 +887,7 @@ sdr <-
           mean = 0
         )
         if(cap < 0.075) cap <- 0.075   
-        if(cap > 0.15) cap <- 0.175   
+        if(cap > 0.175) cap <- 0.175   
         
       }
     } else {
