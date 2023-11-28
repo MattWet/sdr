@@ -1780,10 +1780,20 @@ sdr.gradboostfit <-
       for (j in nx) {
         ## Save last iteration.
         beta[[j]][i, ] <- beta[[j]][i - 1L, ]
-        X[[j]] <- cbind( "(Intercept)" = rep(1,b.size), XX[,setdiff(colnames(beta[[j]]), "(Intercept)" )])
-        Xoos[[j]] <- cbind( "(Intercept)" = rep(1,b.size),XXoos[,setdiff(colnames(beta[[j]]), "(Intercept)" )])
-        colnames(Xoos[[j]]) <- colnames(X[[j]]) <- c("(Intercept)", setdiff(colnames(beta[[j]]), "(Intercept)" ))
-        
+        if(ncol(XX) == 1){
+          if(ncol(beta[[j]]) == 1 ){
+            X[[j]] <- cbind( "(Intercept)" = rep(1,b.size))
+            Xoos[[j]] <- cbind( "(Intercept)" = rep(1,b.size))
+          } else {
+            X[[j]] <- cbind( "(Intercept)" = rep(1,b.size), XX)
+            Xoos[[j]] <- cbind( "(Intercept)" = rep(1,b.size),XXoos)
+          }
+          colnames(Xoos[[j]]) <- colnames(X[[j]]) <- colnames(beta[[j]]) 
+        } else {
+          X[[j]] <- cbind( "(Intercept)" = rep(1,b.size), XX[,setdiff(colnames(beta[[j]]), "(Intercept)" )])
+          Xoos[[j]] <- cbind( "(Intercept)" = rep(1,b.size),XXoos[,setdiff(colnames(beta[[j]]), "(Intercept)" )])
+          colnames(Xoos[[j]]) <- colnames(X[[j]]) <- c("(Intercept)", setdiff(colnames(beta[[j]]), "(Intercept)" ))
+        }
         ## Setup linear predictor.
         eta[[j]] <-
           drop(X[[j]] %*% beta[[j]][i, ])
@@ -2136,13 +2146,24 @@ sdr.gradboostfit <-
     }
     X <- list()
     for (j in nx) {
-      Xoos[[j]] <- cbind( "(Intercept)" = rep(1,b.size), XX[,setdiff(colnames(beta[[j]]), "(Intercept)" )])
+      if(ncol(XX) == 1){
+        if(ncol(beta[[j]]) == 1 ){
+          Xoos[[j]] <- cbind( "(Intercept)" = rep(1,b.size))
+        } else {
+          Xoos[[j]] <- cbind( "(Intercept)" = rep(1,b.size),XXoos)
+        }
+        colnames(Xoos[[j]]) <- colnames(beta[[j]]) 
+      } else {
+        Xoos[[j]] <- cbind( "(Intercept)" = rep(1,b.size),XXoos[,setdiff(colnames(beta[[j]]), "(Intercept)" )])
+        colnames(Xoos[[j]]) <- c("(Intercept)", setdiff(colnames(beta[[j]]), "(Intercept)" ))
+      }
     } 
     for (j in nx) {
       ## Setup linear predictor.
       eta[[j]] <-
         drop(Xoos[[j]] %*% beta[[j]][maxit1, ])
     }
+   
     ## Compute 'out of sample' log-likelihood.
     ll0 <- family$loglik(yoos, family$map2par(eta))
     ll0.list <- c(ll0.list, ll0)
