@@ -711,7 +711,9 @@ sdr <-
            ...) {
     stopifnot(requireNamespace("Formula"))
     stopifnot(requireNamespace("Matrix"))
-    
+
+    if (quick_ffdf) 
+      scalex <- FALSE
     if (is.null(family))
       family <- gamlss.dist::NO
     if (is.function(family))
@@ -814,7 +816,8 @@ sdr <-
       colnames(mfd$y) <- y
       mfd$X <- data[,vars]
     }
-    
+
+    x_mu <- x_sd <- NULL
     if(length(vars) > 0 & scalex){
       # Scaling
       if (is.matrix(data)) {
@@ -855,9 +858,7 @@ sdr <-
         x_mu <- bm_mu(data)
         x_sd <- bm_sd(data, mu = x_mu)
       }
-    } else {
-      x_mu <- x_sd <- NULL
-    }
+    } 
     
     if(is.matrix(data) | inherits(data, "ffdf") | inherits(data, "big.matrix")){
       ndata <- nrow(data)
