@@ -1500,7 +1500,7 @@ sdr.thresdesc <-
         # ic.old <- coef_list_new[["ic.old"]] + K * df
         
         # BIC = -2*loglik_batch + log(batch.size) * df              ####* (nrow(X[[1]])/N)
-        ic.old <- coef_list_new[["ic.old"]] + K * df * (nrow(X[[1]])/N)
+        ic.old <- coef_list_new[["ic.old"]] + K * df #* (nrow(X[[1]])/N)
         lloos.list <- c(lloos.list,  ic.old)
         ll0.list <- c(lloos.list,  -coef_list_new[["ic.old"]]/2)
         
