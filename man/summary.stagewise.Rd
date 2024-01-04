@@ -11,8 +11,9 @@
 
 \usage{
 \method{summary}{stagewise}(object,
-  digits = max(3, getOption("digits") - 3), mstart = round(0.5*object$maxit),
-  mstop = object$maxit, ...)
+  digits = max(3, getOption("digits") - 3),
+  mstart = round(0.5 * length(object$logLik)),
+  mstop = length(object$logLik), ...)
 }
 
 \arguments{

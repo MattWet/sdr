@@ -1,6 +1,5 @@
 \name{sdr-package}
 \alias{sdr-package}
-\alias{sdr}
 \docType{package}
 
 \title{

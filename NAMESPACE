@@ -15,6 +15,8 @@ importFrom("stats", "AIC", "BIC", "as.formula", "coef", "cor", "density",
   "predict", "qnorm", "qqline", "qqnorm", "quantile", "rnorm",
   "runif", "sd", "terms")
 
+importFrom("utils", "write.table")
+
 export(
   "sdr",
   "alpha2cap2",

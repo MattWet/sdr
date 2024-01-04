@@ -773,6 +773,7 @@ sdr <-
     # quick_ffdf means data is in format of modelframe
     if(!quick_ffdf){
       if(inherits(data, "ffdf") ){
+        stopifnot(requireNamespace("ff"))
         outfile <- tempfile(fileext = ".csv")
         
         prepare_bigmem <- function(infile, outfile, formula, BATCHSIZE = 10000, overwrite = FALSE) {
@@ -794,9 +795,9 @@ sdr <-
             cat(counter, "\r")
             
           }
-          ffrowapply(fun(infile[i1:i2, ], f = formula, file = outfile), X = infile, BATCHSIZE = BATCHSIZE)
+          ff::ffrowapply(fun(infile[i1:i2, ], f = formula, file = outfile), X = infile, BATCHSIZE = BATCHSIZE)
           
-          return(read.csv.ffdf(file = outfile))
+          return(ff::read.csv.ffdf(file = outfile))
         }
         
         data <- prepare_bigmem(infile = data, outfile = outfile, f = formula_all, overwrite = TRUE)#read.csv.ffdf(file = outfile)#read.big.matrix(outfile, header = TRUE, type = "double")#prepare_bigmem(infile = data, outfile = outfile, f = formula_all, overwrite = TRUE)

@@ -23,7 +23,7 @@
 \method{BIC}{stagewise}(object, ...)
 
 ## logLik extractor function.
-\method{logLik}{stagewise}(object, mstart = 1, mstop = object$maxit,
+\method{logLik}{stagewise}(object, mstart = 1, mstop = length(object$logLik),
   all = TRUE,...)
 
 }
