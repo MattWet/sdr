@@ -1518,8 +1518,7 @@ sdr.thresdesc <-
             formatC(df,
                     width = tw, flag = " "),
             ", ",
-            paste(ps.final, collapse = ", ") ,
-            "               " ,
+            sprintf(pset_fmt, paste(ps.final, collapse = ", ")),
             if (!ia)
               "\n"
             else
@@ -2034,9 +2033,12 @@ sdr.gradboostfit <-
         }
         
       }
+
+      # Max number of characters in case all parameters are set;
+      # used for formatting cat() output if verbose = TRUE
+      pset_fmt <- paste0("%-", max(sapply(pset, function(x) nchar(paste(x, collapse = ", ")))), "s")
       
       ps.final <- "no par"
-      pset <- powerset.list
       for (j in nx) {
         if (sign.list[[j]] == 0 | sign.list[[j]] == -Inf) {
           ok <- !grepl(j, pset)
@@ -2115,6 +2117,8 @@ sdr.gradboostfit <-
       if (verbose) {
         if (ia)
           cat("\r")
+        # RETO(NOTE): The final "               " is not very robust;
+        #             might need to be improved.
         cat(
           "iter = ",
           formatC(i, width = tw, flag = " "),
@@ -2124,8 +2128,7 @@ sdr.gradboostfit <-
           formatC(df,
                   width = tw, flag = " "),
           ", ",
-          paste(ps.final, collapse = ", ") ,
-          "               " ,
+          sprintf(pset_fmt, paste(ps.final, collapse = ", ")),
           if (!ia)
             "\n"
           else
@@ -2569,8 +2572,7 @@ sdr.gradboostfit2 <-
           formatC(df,
                   width = tw, flag = " "),
           ", ",
-          paste(ps.final, collapse = ", ") ,
-          "               " ,
+          sprintf(pset_fmt, paste(ps.final, collapse = ", ")),
           if (!ia)
             "\n"
           else
