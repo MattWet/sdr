@@ -3406,7 +3406,6 @@ summary.stagewise <- function(object,
       cat("---\n")
     }
     if (!is.null(object$coefficients[[i]])) {
-      cat("-\n")
       cat("Parametric coefficients:\n")
       object$parsum[[i]] <- round(parsum(object$coefficients[[i]]), digits)
       print(object$parsum[[i]])
