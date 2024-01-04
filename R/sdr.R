@@ -3351,6 +3351,7 @@ summary.stagewise <- function(object,
                               ...) {
   # for computing parameter summary
   parsum <- function(d, vec = mstart:mstop) {
+    # TODO(R): Fails if you only have less than 4 iterations!
     dd <- t(d)[, 1:4]
     if (ncol(d) == 1) {
       dd[1] <- mean(d[vec, ])
