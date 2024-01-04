@@ -3340,7 +3340,8 @@ newformula <- function(object,
 
 
 ## Summary method.
-# Umschreiben so dass iter automatisch übernommen wird. Parameterverteilung interessiert dann keinen mehr
+# Umschreiben so dass iter automatisch uebernommen wird. Parameterverteilung
+# interessiert dann keinen mehr
 summary.stagewise <- function(object,
                               digits = max(3, getOption("digits") - 3),
                               mstart = round(0.5 * length(object$logLik)),
