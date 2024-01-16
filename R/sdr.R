@@ -773,6 +773,7 @@ sdr <-
     # quick_ffdf means data is in format of modelframe
     if(!quick_ffdf){
       if(inherits(data, "ffdf") ){
+        stopifnot(requireNamespace("ff"))
         outfile <- tempfile(fileext = ".csv")
         
         prepare_bigmem <- function(infile, outfile, formula, BATCHSIZE = 10000, overwrite = FALSE) {
@@ -794,9 +795,9 @@ sdr <-
             cat(counter, "\r")
             
           }
-          ffrowapply(fun(infile[i1:i2, ], f = formula, file = outfile), X = infile, BATCHSIZE = BATCHSIZE)
+          ff::ffrowapply(fun(infile[i1:i2, ], f = formula, file = outfile), X = infile, BATCHSIZE = BATCHSIZE)
           
-          return(read.csv.ffdf(file = outfile))
+          return(ff::read.csv.ffdf(file = outfile))
         }
         
         data <- prepare_bigmem(infile = data, outfile = outfile, f = formula_all, overwrite = TRUE)#read.csv.ffdf(file = outfile)#read.big.matrix(outfile, header = TRUE, type = "double")#prepare_bigmem(infile = data, outfile = outfile, f = formula_all, overwrite = TRUE)
@@ -1517,8 +1518,7 @@ sdr.thresdesc <-
             formatC(df,
                     width = tw, flag = " "),
             ", ",
-            paste(ps.final, collapse = ", ") ,
-            "               " ,
+            sprintf(pset_fmt, paste(ps.final, collapse = ", ")),
             if (!ia)
               "\n"
             else
@@ -2033,9 +2033,12 @@ sdr.gradboostfit <-
         }
         
       }
+
+      # Max number of characters in case all parameters are set;
+      # used for formatting cat() output if verbose = TRUE
+      pset_fmt <- paste0("%-", max(sapply(pset, function(x) nchar(paste(x, collapse = ", ")))), "s")
       
       ps.final <- "no par"
-      pset <- powerset.list
       for (j in nx) {
         if (sign.list[[j]] == 0 | sign.list[[j]] == -Inf) {
           ok <- !grepl(j, pset)
@@ -2114,6 +2117,8 @@ sdr.gradboostfit <-
       if (verbose) {
         if (ia)
           cat("\r")
+        # RETO(NOTE): The final "               " is not very robust;
+        #             might need to be improved.
         cat(
           "iter = ",
           formatC(i, width = tw, flag = " "),
@@ -2123,8 +2128,7 @@ sdr.gradboostfit <-
           formatC(df,
                   width = tw, flag = " "),
           ", ",
-          paste(ps.final, collapse = ", ") ,
-          "               " ,
+          sprintf(pset_fmt, paste(ps.final, collapse = ", ")),
           if (!ia)
             "\n"
           else
@@ -2568,8 +2572,7 @@ sdr.gradboostfit2 <-
           formatC(df,
                   width = tw, flag = " "),
           ", ",
-          paste(ps.final, collapse = ", ") ,
-          "               " ,
+          sprintf(pset_fmt, paste(ps.final, collapse = ", ")),
           if (!ia)
             "\n"
           else
@@ -3339,7 +3342,8 @@ newformula <- function(object,
 
 
 ## Summary method.
-# Umschreiben so dass iter automatisch übernommen wird. Parameterverteilung interessiert dann keinen mehr
+# Umschreiben so dass iter automatisch uebernommen wird. Parameterverteilung
+# interessiert dann keinen mehr
 summary.stagewise <- function(object,
                               digits = max(3, getOption("digits") - 3),
                               mstart = round(0.5 * length(object$logLik)),
@@ -3347,6 +3351,7 @@ summary.stagewise <- function(object,
                               ...) {
   # for computing parameter summary
   parsum <- function(d, vec = mstart:mstop) {
+    # TODO(R): Fails if you only have less than 4 iterations!
     dd <- t(d)[, 1:4]
     if (ncol(d) == 1) {
       dd[1] <- mean(d[vec, ])
@@ -3402,7 +3407,6 @@ summary.stagewise <- function(object,
       cat("---\n")
     }
     if (!is.null(object$coefficients[[i]])) {
-      cat("-\n")
       cat("Parametric coefficients:\n")
       object$parsum[[i]] <- round(parsum(object$coefficients[[i]]), digits)
       print(object$parsum[[i]])
