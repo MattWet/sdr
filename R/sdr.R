@@ -1333,7 +1333,10 @@ sdr.thresdesc <-
         }
         
       }
-      
+
+      # used for formatting cat() output if verbose = TRUE
+      pset_fmt <- paste0("%-", max(sapply(pset, function(x) nchar(paste(x, collapse = ", ")))), "s")
+                                    
       ps.final <- "no par"
       pset <- powerset.list
       for (j in nx) {
