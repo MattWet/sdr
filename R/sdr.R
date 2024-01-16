@@ -1142,7 +1142,10 @@ sdr.thresdesc <-
     if (!is.null(length_ps))
       powerset.list <-
       powerset.list[sapply(powerset.list, length) == length_ps]
-    
+
+    # used for formatting cat() output if verbose = TRUE
+    pset_fmt <- paste0("%-", max(sapply(pset, function(x) nchar(paste(x, collapse = ", ")))), "s")
+                                          
     if (initialize) {
       if (!is.null(family$initialize)) {
         betai <- list()
@@ -1333,9 +1336,6 @@ sdr.thresdesc <-
         }
         
       }
-
-      # used for formatting cat() output if verbose = TRUE
-      pset_fmt <- paste0("%-", max(sapply(pset, function(x) nchar(paste(x, collapse = ", ")))), "s")
                                     
       ps.final <- "no par"
       pset <- powerset.list
