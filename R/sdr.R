@@ -1144,9 +1144,10 @@ sdr.thresdesc <-
       powerset.list[sapply(powerset.list, length) == length_ps]
 
     # used for formatting cat() output if verbose = TRUE
-    pset_fmt <- paste0("%-", max(sapply(pset, function(x) nchar(paste(x, collapse = ", ")))), "s")
-                                          
-    if (initialize) {
+    ll <- which.max(sapply(powerset.list, length))
+    pset_fmt <- paste0("%-", max(sapply(powerset.list[ll], function(x) nchar(paste(x, collapse = ", ")))), "s")                                      
+    
+                                        if (initialize) {
       if (!is.null(family$initialize)) {
         betai <- list()
         for (j in nx) {
