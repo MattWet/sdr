@@ -98,9 +98,6 @@ expect_equal(rmat[2:10, 6, drop = TRUE], data[2:10, 6], info = "Testing subsetti
 tmp <- as.matrix(data[3, 3:11, drop = FALSE]); rownames(tmp) <- NULL
 expect_equal(rmat[3, 3:11], tmp, info = "Testing subsetting by index")
 
-# 
-devtools::load_all("../..")
-
 
 # Testing subsetting with empty index; only allowed for cols
 
