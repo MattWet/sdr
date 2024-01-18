@@ -1620,6 +1620,18 @@ sdr.thresdesc <-
     return(rval)
   }
 
+# Helper Function to Draw Batch IDs (row ids)
+#
+# Intended for package internal use only; thus no sanity checks.
+# x is the user object (NULL, single numeric, or a list
+# of prepared indices for the iterations). "i" is the
+# batch we would like to draw, N the total sample size.
+get_batch_ids <- function(x, i, N) {
+    if (is.null(x))         seq_len(N) # simply 1:N
+    else if (is.list(x))    x[[i]]     # i'th user batch
+    else if (is.numeric(x)) sample(seq_len(N), x, replace = FALSE) # random
+    else stop("problems drawing batch IDs")
+}
 
 
 # best subset gradboosting with correlation filtering
@@ -1669,36 +1681,30 @@ sdr.gradboostfit <-
     eps <- rep(eps, length.out = maxit1)
     eps_int <- rep(eps_int, length.out = maxit1)
     
-    N <- nrow(data)
+    N  <- nrow(data)
     nx <- names(vardist)
 
-    if (is.null(batch_ids)) {
-      ind <- 1:N
-      b.size <- N
-      batch_ids <- lapply(1:maxit1, function(...)
-        ind)
-    } else {
-      if (is.numeric(batch_ids)) {
-        ind <- 1:N
-        b.size <- batch_ids
-        batch_ids <-
-          lapply(1:maxit1, function(...)
-            sample(ind, size = batch_ids,
-                   replace = FALSE))
-      }
+    # If the user provided a list of ids for the batches: check
+    # if that matches the number of requested iterations + refitting.
+    # Throw warning if not.
+
+    if (is.list(batch_ids) && length(batch_ids) != maxit1) {
+      warning("Length of batch_ids != maxit + maxit_refit; using length of batch_ids provided for setting maxit + maxit_refit!")
+      maxit1 <- length(batch_ids)
     }
 
-    if (!is.list(batch_ids))
-      stop("Argument batch_ids must be a list of indices!")
-    if (length(batch_ids) != maxit1)
-      warning("Length of batch_ids != maxit+maxit_refit, using batch_ids for setting maxit+maxit_refit!")
-    maxit1 <- length(batch_ids)
+    # Draw initial set of batch IDs; `bids` (batch ids) will
+    # be extended during iteration to keep track of ids.
+    bids <- list(initial = get_batch_ids(batch_ids, i = 1, N = N))
+
+    # TODO(R): Why "plots" and what do we actually do here?
     # number of plots
-    tw <- length(strsplit(as.character(maxit1), "")[[1]]) + 1L
-    if(!exists("b.size")) b.size <- length(batch_ids[[1]])
+    ##ORIG#   tw <- length(strsplit(as.character(maxit1), "")[[1]]) + 1L
+    tw <- nchar(as.character(maxit1)) + 1
+    if (!exists("b.size")) b.size <- length(bids$initial)
+
     # K is penalty for IC
-    if (is.null(K))
-      K <- log(b.size)
+    if (is.null(K)) K <- log(b.size)
     
     ic.oos.list <- ic0.list <- ll.list <- ll0.list <- NULL
     beta <- list()
@@ -1734,18 +1740,17 @@ sdr.gradboostfit <-
           if (!is.null(family$initialize[[j]])) {
             linkfun <- make.link2(family$links[j])$linkfun
             beta[[j]][1L, "(Intercept)"] <-
-              mean(linkfun(family$initialize[[j]](data[batch_ids[[1]],y],
-              )), na.rm = TRUE)
-            
+              mean(linkfun(family$initialize[[j]](data[bids$initial, y])), na.rm = TRUE)
           }
         }
       }
     }
-    df <- sum(sapply(beta, function(b) {
-      sum(b[1, ] != 0)
-    }))
-    err01 <- .Machine$double.eps ^ (1 / 2)
-    err02 <- err01 * 2 * nrow(data.frame(batch_ids[1]))
+
+    # Calculating degrees of freedom ...
+    df <- sum(sapply(beta, function(b) { sum(b[1, ] != 0) }))
+
+    err01 <- .Machine$double.eps^(1/2)
+    err02 <- err01 * 2 * length(bids$initial)
     # err02 is the denominator for central numeric differentiation.  b.size makes
     # gradient magnitute for different sample sizes comparable this translates
     # maximum log likelihood to maximum average loglikelihood
@@ -1754,17 +1759,34 @@ sdr.gradboostfit <-
     ma <- function(x, order = 20) {
       ma1 <- filter(x, rep(1 / order, order), sides = 1)
       ma2 <- rev(filter(rev(x), rep(1 / order, order), sides = 1))
-      ma3 <- ifelse(is.na(ma1), ma2, ma1)
-      ma3
+      return(ifelse(is.na(ma1), ma2, ma1))
     }
+
+    # If oos_batch is 'next' we would like to use the next batch for
+    # validation. Thus we need to keep two sets of batch IDs and store
+    # the batch ids of the current ($current) as well as the next ($next)
+    # iteration into our `bids` list.
+    #
+    # After each iteration $current is overwritten with $next and a new
+    # the new batch IDs for the $next iteration are added.
+    # When reaching maxit1, $next will be set to $initial (first batch).
+    bids$current = bids$initial # Set current to batch 1,
+    bids$`next`  = get_batch_ids(batch_ids, i = 2, N = N) # next to batch 2
     
+    # Iterating; looping 2:maxit1
     for (i in 2:maxit1) {
+
+      # Update batch ids; write next -> current and draw
+      # a new next (initial if i == maxit, else i + 1).
+      bids$current <- bids$`next`
+      bids$`next`  <- if (i == maxit1) bids$initial else get_batch_ids(batch_ids, i = i + 1, N = N)
+
       # deselect non selected variables for updating if maxit_refit > 0
-      if(i == maxit +1){
+      if (i == maxit +1) {
         for(j in nx){
           cond <- beta[[j]][maxit,] != 0
           cond["(Intercept)"] <- TRUE
-          intvar[[j]] <- intvar[[j]][cond]
+          intvar[[j]]  <- intvar[[j]][cond]
           vardist[[j]] <- vardist[[j]][cond[-1]]
         }
       }
@@ -1772,33 +1794,28 @@ sdr.gradboostfit <-
       eta.oos <- eta <- val <- absval <- sgn <- list()
       
       ## Extract response.
-      yi <- as.matrix(data[batch_ids[[i]],y])
+      yi <- as.matrix(data[bids$current, y])
       
-      ## out of sample
-      if (oos_batch == "next") {
-        if (i != maxit1) {
-          i.oos <- i + 1
-        } else {
-          i.oos <- 1
-        }
-      }
-      if (oos_batch == "same") {
-        i.oos <- i
-      }
-      if (oos_batch == "random") {
-        i.oos <- sample(maxit1, 1)
-      }
-      
-      batch.oos <- batch_ids[[i.oos]]
-      y.oos <- as.matrix(data[batch.oos,y])
+      # Draw batch IDs for out of sample batch
+      # Overwrite $oos in the bids list.
+      bids$oos <- if (oos_batch == "next") {
+          bids$`next`
+      } else if (oos_batch == "random") {
+          get_batch_ids(batch_ids, i = sample(maxit1, 1), N = N)
+      } else if (oos_batch == "same") {
+          bids$current
+      } else stop("Whoops, unknown oos_batch case; we should never end up here")
+
+      y.oos <- as.matrix(data[bids$oos, y])
       # draw batchwise from big.matrix and scale
-      XX <- as.matrix(data[batch_ids[[i]],vars])
-      XXoos <- as.matrix(data[batch.oos,vars])
-      if(scalex){
+      XX <- as.matrix(data[bids$current, vars])
+      XXoos <- as.matrix(data[bids$oos, vars])
+      if (scalex){
         XX <- myscale(XX, x_mu = x_mu, x_sd = x_sd)
         XXoos <- myscale(XXoos, x_mu = x_mu, x_sd = x_sd)
       }
       X <- Xoos <- list()
+
       for (j in nx) {
         ## Save last iteration.
         beta[[j]][i, ] <- beta[[j]][i - 1L, ]
@@ -1824,6 +1841,7 @@ sdr.gradboostfit <-
         eta.oos[[j]] <-
           drop(Xoos[[j]] %*% beta[[j]][i, ])
       }
+
       
       # out of sample
       ll.oos <- family$loglik(y.oos, family$map2par(eta.oos))
@@ -2136,40 +2154,32 @@ sdr.gradboostfit <-
       }
       
       if (verbose) {
-        if (ia)
-          cat("\r")
-        # RETO(NOTE): The final "               " is not very robust;
-        #             might need to be improved.
+        if (ia) cat("\r")
         cat(
-          "iter = ",
-          formatC(i, width = tw, flag = " "),
-          ", logLik = ",
-          formatC(round(ll0, 4L), width = tw, flag = " "),
-          ", df = ",
-          formatC(df,
-                  width = tw, flag = " "),
-          ", ",
-          sprintf(pset_fmt, paste(ps.final, collapse = ", ")),
-          if (!ia)
-            "\n"
-          else
-            NULL,
+          "iter = ",     formatC(i, width = tw, flag = " "),
+          ", logLik = ", formatC(round(ll0, 4L), width = tw, flag = " "),
+          ", df = ",     formatC(df, width = tw, flag = " "),
+          ", ",          sprintf(pset_fmt, paste(ps.final, collapse = ", ")),
+          if (!ia) "\n" else NULL,
           sep = ""
         )
       }
-    }
+
+    } # End of loop over 2:maxit1
     
     
     ## Compute log-likelihood.
     ll <- family$loglik(yi, family$map2par(eta))
     
     ## Extract 'out of sample' response.
-    yoos <- as.matrix(data[batch_ids[[1]],y])
+    ## bids$oos is the last out-of-sample batch index vector.
+    ## If oos_batch = 'next' is used this one should be the
+    ## first one again (identical to bids$initial).
+    yoos <- as.matrix(data[bids$oos, y])
     
-    XX <- as.matrix(data[batch_ids[[1]],vars])
-    if(scalex){
-      XX <- myscale(XX, x_mu = x_mu, x_sd = x_sd)
-    }
+    XX <- as.matrix(data[bids$oos, vars])
+    if (scalex) XX <- myscale(XX, x_mu = x_mu, x_sd = x_sd)
+
     X <- list()
     for (j in nx) {
       if(ncol(XX) == 1){
@@ -2186,8 +2196,7 @@ sdr.gradboostfit <-
     } 
     for (j in nx) {
       ## Setup linear predictor.
-      eta[[j]] <-
-        drop(Xoos[[j]] %*% beta[[j]][maxit1, ])
+      eta[[j]] <- drop(Xoos[[j]] %*% beta[[j]][maxit1, ])
     }
    
     ## Compute 'out of sample' log-likelihood.
