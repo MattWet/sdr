@@ -697,7 +697,7 @@ sdr <-
            family = NULL,
            data = NULL,
            batch_ids = NULL,
-           updating = "thresdesc", # c("thresdesc", "bs", "cyclic", "noncyclic")
+           updating = c("thresdesc", "bs", "cyclic", "noncyclic"),
            light = FALSE, # TRUE means no data matrix gets returned
            CF = TRUE,
            cap = NULL,
@@ -712,24 +712,50 @@ sdr <-
     stopifnot(requireNamespace("Formula"))
     stopifnot(requireNamespace("Matrix"))
 
-    if (quick_ffdf) 
-      scalex <- FALSE
-    if (is.null(family))
-      family <- gamlss.dist::NO
-    if (is.function(family))
-      family <- family()
-    if (inherits(family, "gamlss.family"))
-      family <- tF(family)
+    # Sanity check for input args
+
+    # Checking and manipulating formula (if needed)
+    # * If character of length 1 we assume it should be a formula and convert it.
+    # * If list but elements contain character length 1, coerce to formula.
+    if (is.character(formula) & length(formula) == 1) formula <- as.formula(formula)
+    if (is.list(formula)) formula <- lapply(formula, function(x) if (is.character(x) & length(x) == 1) as.formula(x) else x)
+    stopifnot("argument `formula` must be a formula or list of formulae objects" =
+              inherits(formula, "formula") || (is.list(formula) && all(sapply(formula, function(x) inherits(x, "formula")))))
+
+    stopifnot("argument `batch_ids` incorrect" =
+              is.null(batch_ids) || is.numeric(batch_ids) || (is.list(batch_ids) && all(sapply(batch_ids, is.numeric))))
+    updating <- match.arg(updating)
+    stopifnot("argument `light` must be logical TRUE or FALSE"     = isTRUE(light) || isFALSE(light))
+    stopifnot("argument `CF` must be logical TRUE or FALSE"        = isTRUE(CF) || isFALSE(CF))
+    stopifnot("argument `cap` must be NULL or single numeric"      = is.null(cap) || (is.numeric(cap) && length(cap) == 1))
+    stopifnot("argument `caps` must be NULL or numeric"            = is.null(caps) || is.numeric(cap))
+    stopifnot("argument `scalex` must be logical TRUE or FALSE"    = isTRUE(scalex) || isFALSE(scalex))
+    stopifnot("argument `refitting` must be logical TRUE or FALSE" = isTRUE(refitting) || isFALSE(refitting))
+
+    stopifnot("argument `eps` must be positive numeric of length 1" = is.numeric(eps) && length(eps) == 1 && eps > 0)
+    stopifnot("argument `nu` must be positive numeric of length 1"  = is.numeric(nu) && length(nu) == 1 && nu > 0)
+    stopifnot("argument `ncaps` must be positive numeric of length 1"  = is.numeric(ncaps) && length(ncaps) == 1 && ncaps > 0)
+    stopifnot("argument `quick_ffdf` must be logical TRUE or FALSE"    = isTRUE(quick_ffdf) || isFALSE(quick_ffdf))
+
+    if (quick_ffdf)                         scalex <- FALSE
+
+    # Preparing family object
+    if (is.null(family))                    family <- gamlss.dist::NO
+    if (is.function(family))                family <- family()
+    if (inherits(family, "gamlss.family"))  family <- tF(family)
     family <- complete.bamlss.family(family)
-    if (!is.list(formula))
-      formula <- list(formula)
+
+    # Ensure formula is a list containing a formula for each parameter of the family
+    if (!is.list(formula)) formula <- list(formula)
     if (length(formula) < length(family$names)) {
       for (j in (length(formula) + 1):length(family$names))
         formula[[j]] <- ~ 1
     }
     formula <- rep(formula, length = length(family$names))
     names(formula) <- family$names
+
     
+    # Starting to prepare the objects for estimation
     mfd <- list()
     terms <- NULL
     # list of model formula
@@ -869,11 +895,9 @@ sdr <-
     # nobs = batchsize
     if (is.null(batch_ids)){
       nobs <- ndata
-    } 
-    if (is.numeric(batch_ids)){
+    } else if (is.numeric(batch_ids)){
       nobs <- batch_ids
-    } 
-    if (is.list(batch_ids)){
+    } else if (is.list(batch_ids)){
       nobs <- length(batch_ids[[1]])
     }
     
@@ -899,11 +923,11 @@ sdr <-
       cap <- 0
     }
     
-    if(updating == "thresdesc"){
-      if(is.null(caps)){
-        if(nobs < 1000 ) caps <- seq(max(0.15,min(cap + 0.15, 0.4)), min(0.1,max(cap - 0.15, 0.03)), length.out = ncaps)
-        if(nobs >= 1000 & nobs <= 10000) caps <- seq(max(0.15,min(cap + 0.08, 0.4)), min(0.1,max(cap - 0.12, 0.03)), length.out = ncaps)
-        if(nobs > 10000) caps <- seq(max(0.15,min(cap + 0.1, 0.4)), min(0.1,max(cap - 0.1, 0.03)), length.out = ncaps)
+    if (updating == "thresdesc") {
+      if (is.null(caps)) {
+        if(nobs < 1000 )                      caps <- seq(max(0.15, min(cap + 0.15, 0.4)), min(0.1,max(cap - 0.15, 0.03)), length.out = ncaps)
+        else if(nobs >= 1000 & nobs <= 10000) caps <- seq(max(0.15, min(cap + 0.08, 0.4)), min(0.1,max(cap - 0.12, 0.03)), length.out = ncaps)
+        else                                  caps <- seq(max(0.15, min(cap + 0.10, 0.4)), min(0.1,max(cap - 0.10, 0.03)), length.out = ncaps)
         cat("\n","Proposed thresholds: ", round(caps,4),"\n")
       }
       
@@ -928,8 +952,7 @@ sdr <-
             ...
           )
         )
-    }
-    if(updating == "bs"){
+    } else if (updating == "bs") {
       mfd$cap <- cap
       mfd <-
         c(
@@ -952,8 +975,7 @@ sdr <-
             ...
           )
         )
-    }
-    if(updating == "noncyclic"){
+    } else if (updating == "noncyclic") {
       mfd$cap <- cap
       mfd <-
         c(
@@ -977,8 +999,7 @@ sdr <-
             ...
           )
         )
-    }
-    if(updating == "cyclic"){
+    } else if (updating == "cyclic") {
       mfd$cap <- cap
       mfd <-
         c(
@@ -1001,6 +1022,8 @@ sdr <-
             ...
           )
         )
+    } else {
+        stop("Whoops, we should never end up here.")
     }
     
     
