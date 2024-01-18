@@ -753,48 +753,39 @@ sdr <-
     }
     formula <- rep(formula, length = length(family$names))
     names(formula) <- family$names
-
     
     # Starting to prepare the objects for estimation
-    mfd <- list()
+    mfd <- list(varnames = list(), formula = list())
     terms <- NULL
     # list of model formula
     # Intercept only
-    mf <- list()
-    parf <- list()
     for (i in names(formula)) {
-      fi <- Formula::as.Formula(formula[[i]])
-      parf[[i]] <- vars <- attr(terms(fi), "term.labels")
-      names(parf[[i]]) <- names(vars) <- NULL
-      if(!length(vars) > 0){
-        mf[[i]] <- ~ 1
+      fi <- as.Formula(formula[[i]])
+      mfd$varnames[[i]] <-  unname(attr(terms(fi), "term.labels"))
+      if(!length(mfd$varnames[[i]]) > 0){
+        mfd$formula[[i]] <- ~ 1
       } else {
-        mf[[i]] <- as.formula(paste(" ~ ", paste0(vars, collapse = "+")))
+        mfd$formula[[i]] <- as.formula(paste(" ~ ", paste0(mfd$varnames[[i]], collapse = "+")))
       } 
     }
-    
-    mfd$varnames <- parf
-    mfd$formula <- mf
-    mfd$y <- y <- all.vars(formula(Formula::as.Formula(formula[[1]]),
-                                   lhs = 1,
-                                   rhs = 0,
-                                   drop = TRUE))
-    
+
+    mfd$y <- y <- all.vars(formula(as.Formula(formula[[1]]),
+                                   lhs = 1, rhs = 0, drop = TRUE))
+
     # All variables that are needed
-    vars <- unique(unlist(parf))
-    names(vars) <- NULL
+    vars <- unique(unlist(mfd$varnames))
     if(!length(vars) > 0){
       formula_all <- ~ 1
     } else {
       formula_all <- as.formula(paste(" ~ ", paste0(vars, collapse = "+")))
     }
     
-    
     if(inherits(data, "big.matrix")){
       quick_ffdf <- TRUE
       light <- TRUE
       scalex <- FALSE
     }
+
     # delete bm.csv on exit
     # quick_ffdf means data is in format of modelframe
     if(!quick_ffdf){
@@ -1661,6 +1652,7 @@ sdr.gradboostfit <-
            y = NULL,
            vars = NULL,
            ...) {
+
     ia <- interactive()
     if(!refitting) {
       maxit_refit <- 0
@@ -1679,6 +1671,7 @@ sdr.gradboostfit <-
     
     N <- nrow(data)
     nx <- names(vardist)
+
     if (is.null(batch_ids)) {
       ind <- 1:N
       b.size <- N
@@ -1694,6 +1687,7 @@ sdr.gradboostfit <-
                    replace = FALSE))
       }
     }
+
     if (!is.list(batch_ids))
       stop("Argument batch_ids must be a list of indices!")
     if (length(batch_ids) != maxit1)
