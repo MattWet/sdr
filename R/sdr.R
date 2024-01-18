@@ -463,58 +463,25 @@ complete.bamlss.family <- function(family)
   for (i in family$names) {
     if (is.null(family$hess[[i]]) & !is.null(family$d)) {
       fun <- if (!is.null(attr(family$score[[i]], "dnum"))) {
-        c(
-          "function(y, par, ...) {",
-          paste("  eta <- linkfun[['", i, "']](par[['", i, "']]);", sep = ""),
-          paste(
-            "  par[['",
-            i,
-            "']] <- linkinv[['",
-            i,
-            "']](eta + err11);",
-            sep = ""
-          ),
-          paste("  d1 <- family$score[['", i, "']](y, par, ...);", sep = ""),
-          paste(
-            "  par[['",
-            i,
-            "']] <- linkinv[['",
-            i,
-            "']](eta - err11);",
-            sep = ""
-          ),
-          paste("  d2 <- family$score[['", i, "']](y, par, ...);", sep = ""),
+        c("function(y, par, ...) {",
+          paste0("  eta <- linkfun[['", i, "']](par[['", i, "']]);"),
+          paste0("  par[['", i, "']] <- linkinv[['", i, "']](eta + err11);"),
+          paste0("  d1 <- family$score[['", i, "']](y, par, ...);", sep = ""),
+          paste0("  par[['", i, "']] <- linkinv[['", i, "']](eta - err11);"),
+          paste0("  d2 <- family$score[['", i, "']](y, par, ...);"),
           "  return(-1 * (d1 - d2) / err12)",
-          "}"
-        )
+          "}")
       } else {
-        c(
-          "function(y, par, ...) {",
-          paste("  eta <- linkfun[['", i, "']](par[['", i, "']]);", sep = ""),
-          paste(
-            "  par[['",
-            i,
-            "']] <- linkinv[['",
-            i,
-            "']](eta + err01);",
-            sep = ""
-          ),
-          paste("  d1 <- family$score[['", i, "']](y, par, ...);", sep = ""),
-          paste(
-            "  par[['",
-            i,
-            "']] <- linkinv[['",
-            i,
-            "']](eta - err01);",
-            sep = ""
-          ),
-          paste("  d2 <- family$score[['", i, "']](y, par, ...);", sep = ""),
+        c("function(y, par, ...) {",
+          paste0("  eta <- linkfun[['", i, "']](par[['", i, "']]);"),
+          paste0("  par[['", i, "']] <- linkinv[['", i, "']](eta + err01);"),
+          paste0("  d1 <- family$score[['", i, "']](y, par, ...);"),
+          paste0("  par[['", i, "']] <- linkinv[['", i, "']](eta - err01);"),
+          paste0("  d2 <- family$score[['", i, "']](y, par, ...);"),
           "  return(-1 * (d1 - d2) / err02)",
-          "}"
-        )
+          "}")
       }
-      family$hess[[i]] <-
-        eval(parse(text = paste(fun, collapse = "")))
+      family$hess[[i]] <- eval(parse(text = paste(fun, collapse = "")))
     }
   }
   
@@ -594,17 +561,7 @@ make.link2 <- function(link)
       return(x)
     }
     
-    if (link %in% c(
-      "logit",
-      "probit",
-      "cauchit",
-      "cloglog",
-      "identity",
-      "log",
-      "sqrt",
-      "1/mu^2",
-      "inverse"
-    )) {
+    if (link %in% c("logit", "probit", "cauchit", "cloglog", "identity", "log", "sqrt", "1/mu^2", "inverse")) {
       rval <- make.link(link)
     } else {
       rval <- switch(
@@ -667,11 +624,7 @@ make.link2 <- function(link)
 }
 
 
-alpha2cap2 <-
-  function(alpha = 0.01,
-           nnobs = NULL,
-           nvars = NULL,
-           mean = 0) {
+alpha2cap2 <- function(alpha = 0.01, nnobs = NULL, nvars = NULL, mean = 0) {
     t <- (1 - alpha) ^ (1 / nvars)
     if(mean != 0){
     p <- function(cap) {
@@ -692,23 +645,23 @@ alpha2cap2 <-
 
 
 ## Stagewise distributional regression (SDR).
-sdr <-
-  function(formula,
-           family = NULL,
-           data = NULL,
-           batch_ids = NULL,
-           updating = c("thresdesc", "bs", "cyclic", "noncyclic"),
-           light = FALSE, # TRUE means no data matrix gets returned
-           CF = TRUE,
-           cap = NULL,
-           caps = NULL,
-           scalex = TRUE,
-           refitting = TRUE,
-           eps = 0.01,
-           nu = 0.1,
-           ncaps = 10,
-           quick_ffdf = FALSE,
-           ...) {
+sdr <- function(formula,
+                family = NULL,
+                data = NULL,
+                batch_ids = NULL,
+                updating = c("thresdesc", "bs", "cyclic", "noncyclic"),
+                light = FALSE, # TRUE means no data matrix gets returned
+                CF = TRUE,
+                cap = NULL,
+                caps = NULL,
+                scalex = TRUE,
+                refitting = TRUE,
+                eps = 0.01,
+                nu = 0.1,
+                ncaps = 10,
+                quick_ffdf = FALSE,
+                ...) {
+
     stopifnot(requireNamespace("Formula"))
     stopifnot(requireNamespace("Matrix"))
 
@@ -909,16 +862,8 @@ sdr <-
     # todo: adapt for different nobs in parameter
     if (CF & nvars != 0) {
       if (is.null(cap)) {
-        
-        cap <- alpha2cap2(
-          alpha = 0.05,
-          nnobs = nobs,
-          nvars = nvars,
-          mean = 0
-        )
-        if(cap < 0.075) cap <- 0.075   
-        if(cap > 0.175) cap <- 0.175   
-        
+        cap <- alpha2cap2(alpha = 0.05, nnobs = nobs, nvars = nvars, mean = 0)
+        cap <- min(max(cap, 0.075), 0.175) # Limit cap to [0.075 - 0.175]
       }
     } else {
       cap <- 0
@@ -1101,7 +1046,7 @@ sdr.thresdesc <-
            caps = seq(0.2,0.05, length.out = 10),
            ...) {
     ia <- interactive()
-    if(!refitting) {
+    if (!refitting) {
       maxit_refit <- 0
     }
     
@@ -1111,35 +1056,30 @@ sdr.thresdesc <-
       return(x)
     }
     
-    maxit1 <- maxit + maxit_refit
-    eps <- rep(eps, length.out = maxit1)
+    maxit1  <- maxit + maxit_refit
+    eps     <- rep(eps, length.out = maxit1)
     eps_int <- rep(eps_int, length.out = maxit1)
     
-    N <- nrow(data)
-    nx <- names(vardist)
-    ind <- 1:N
+    N       <- nrow(data)
+    nx      <- names(vardist)
+    ind     <- 1:N
     
     if (is.null(batch_ids)) {
-      ind <- 1:N
-      b.size <- N
-      batch_ids <- lapply(1:maxit1, function(...)
-        ind)
-    } else {
-      if (is.numeric(batch_ids)) {
-        ind <- 1:N
-        b.size <- batch_ids
-        batch_ids <-
-          lapply(1:maxit1, function(...)
-            sample(ind, size = batch_ids,
-                   replace = FALSE))
-      }
-    }
+      ind       <- 1:N
+      b.size    <- N
+      batch_ids <- lapply(1:maxit1, function(...) ind)
+    } else if (is.numeric(batch_ids)) {
+      ind       <- 1:N
+      b.size    <- batch_ids
+      batch_ids <- lapply(1:maxit1, function(...) sample(ind, size = batch_ids, replace = FALSE))
+    } # else batch_ids is a list of indices
     
     if (!is.list(batch_ids))
       stop("Argument batch_ids must be a list of indices!")
     if (length(batch_ids) != maxit1)
       warning("Length of batch_ids != maxit+maxit_refit, using batch_ids for setting maxit+maxit_refit!")
     maxit1 <- length(batch_ids)
+
     # number of plots
     tw <- length(strsplit(as.character(maxit1), "")[[1]]) + 1L
     if(!exists("b.size")) b.size <- length(batch_ids[[1]])
@@ -1170,30 +1110,25 @@ sdr.thresdesc <-
     #beta.grad <- beta
     powerset.list <- powerset(nx)[-1]
     if (!is.null(length_ps))
-      powerset.list <-
-      powerset.list[sapply(powerset.list, length) == length_ps]
+      powerset.list <- powerset.list[sapply(powerset.list, length) == length_ps]
 
     # used for formatting cat() output if verbose = TRUE
     ll <- which.max(sapply(powerset.list, length))
     pset_fmt <- paste0("%-", max(sapply(powerset.list[ll], function(x) nchar(paste(x, collapse = ", ")))), "s")                                      
     
-                                        if (initialize) {
+    if (initialize) {
       if (!is.null(family$initialize)) {
         betai <- list()
         for (j in nx) {
           if (!is.null(family$initialize[[j]])) {
             linkfun <- make.link2(family$links[j])$linkfun
-            beta[[j]][1L, "(Intercept)"] <-
-              mean(linkfun(family$initialize[[j]](data[batch_ids[[1]],y],
-              )), na.rm = TRUE)
+            beta[[j]][1L, "(Intercept)"] <- mean(linkfun(family$initialize[[j]](data[batch_ids[[1]], y], )), na.rm = TRUE)
             
           }
         }
       }
     }
-    df <- sum(sapply(beta, function(b) {
-      sum(b[1, ] != 0)
-    }))
+    df    <- sum(sapply(beta, function(b) sum(b[1, ] != 0)))
     err01 <- .Machine$double.eps ^ (1 / 2)
     err02 <- err01 * 2 * b.size
     # err02 is the denominator for central numeric differentiation.  b.size makes
@@ -1204,8 +1139,7 @@ sdr.thresdesc <-
     ma <- function(x, order = 20) {
       ma1 <- filter(x, rep(1 / order, order), sides = 1)
       ma2 <- rev(filter(rev(x), rep(1 / order, order), sides = 1))
-      ma3 <- ifelse(is.na(ma1), ma2, ma1)
-      ma3
+      return(ifelse(is.na(ma1), ma2, ma1))
     }
     
     bs_fun <- function(coef_list, yi, X, yoos, Xoos, nu = 0.1, nu_int = 0.05, eps = 0.1, eps_int = 0.1,
@@ -1216,33 +1150,27 @@ sdr.thresdesc <-
       
       for (j in nx) {
         ## Setup linear predictor.
-        etaoos[[j]] <-
-          drop(Xoos[[j]] %*% coef_list_new[[j]])
-        eta[[j]] <-
-          drop(X[[j]] %*% coef_list_new[[j]])
-        
+        etaoos[[j]] <- drop(Xoos[[j]] %*% coef_list_new[[j]])
+        eta[[j]]    <- drop(X[[j]] %*% coef_list_new[[j]])
       }
       
       lloos <- family$loglik(yoos, family$map2par(etaoos))
       
       # best subset intercept updating
-      sign.list <- rep(-Inf, length(nx))
-      names(sign.list) <- nx
+      sign.list <- setNames(rep(-Inf, length(nx)), nx)
       
       for (j in nx) {
        
         ## Get coefficients and setup.
-        tbeta <- coef_list_new[[j]]
+        tbeta    <- coef_list_new[[j]]
         ## Positive.
         tbeta[1] <- tbeta[1] + err01
-        eta[[j]] <-
-          drop(X[[j]] %*% tbeta)
+        eta[[j]] <- drop(X[[j]] %*% tbeta)
         ll1 <- family$loglik(yi, family$map2par(eta))
         
         ## Negative
         tbeta[1] <- tbeta[1] - 2 * err01
-        eta[[j]] <-
-          drop(X[[j]] %*% tbeta)
+        eta[[j]] <- drop(X[[j]] %*% tbeta)
         ll2 <- family$loglik(yi, family$map2par(eta))
         
         grad <- (ll1 - ll2) / err02
@@ -1264,9 +1192,9 @@ sdr.thresdesc <-
         for (j in nx){
           beta.wip[[j]] <- beta.final[[j]] <- coef_list_new[[j]]
         }  
-          # ic.old is the old information criterion insample
+        # ic.old is the old information criterion insample
         # without penalty for complexity, i.e. -2*logLik. K = 0 is default.
-        ic.old <- -2*lloos 
+        ic.old <- -2 * lloos 
         
         for (l in 1:length(pset)) {
           # ps <- !is.na(pset[l,])
@@ -1277,27 +1205,21 @@ sdr.thresdesc <-
             sign.list2 <- eps_int * sign.list2 / gnorm
           }
           for (ij in pset[[l]]) {
-            sign.list2[ij] <- ifelse(
-              i < 0.8 * maxit1 & abs(sign.list2[ij]) <
-                nu_int * eps_int,
-              sign(sign.list2[ij]) * nu_int * eps_int,
-              sign.list2[ij]
-            )
+            sign.list2[ij] <- ifelse(i < 0.8 * maxit1 & abs(sign.list2[ij]) < nu_int * eps_int,
+                                     sign(sign.list2[ij]) * nu_int * eps_int,
+                                     sign.list2[ij])
           }
           
           for (j in pset[[l]]) {
             grad <- sign.list2[[j]]
-            
             coef_list_new[[j]][1] <- coef_list_new[[j]][1] + grad
-            
           }
           
           
           ## keep update only if oos information crit improves
           for (j in nx)
-            etaoos[[j]] <-
-            drop(Xoos[[j]] %*%
-                   coef_list_new[[j]])
+            etaoos[[j]] <- drop(Xoos[[j]] %*% coef_list_new[[j]])
+
           ll <- family$loglik(yoos, family$map2par(etaoos))
           ic.new <- -2 * ll 
           if (ic.new < ic.old) {
@@ -1305,23 +1227,22 @@ sdr.thresdesc <-
             for (j in nx)
               beta.final[[j]] <- coef_list_new[[j]]
             ps.final <- pset[[l]]
-            ic.old <- ic.new
+            ic.old   <- ic.new
           }
           for (j in pset[[l]])
             coef_list_new[[j]] <- beta.wip[[j]]
           
-        }  # this bracket is for pset
+        } # this bracket is for pset
         
         # save best beta
         for (j in nx){
           coef_list_new[[j]] <- beta.final[[j]]
-          eta[[j]] <- drop(X[[j]] %*% coef_list_new[[j]])
+          eta[[j]]           <- drop(X[[j]] %*% coef_list_new[[j]])
         }
       }
       
       
-      sign.list <- pos.list <- rep(-Inf, length(nx))
-      names(sign.list) <- names(pos.list) <- nx
+      sign.list <- pos.list <- setNames(rep(-Inf, length(nx)), nx)
       
       for (j in nx) {
         ## Get coefficients and setup.
@@ -1330,19 +1251,16 @@ sdr.thresdesc <-
         if (nc > 0) {
           
           eta[[j]] <- eta[[j]] + err01
-          ll1 <- family$d(yi, family$map2par(eta), log = TRUE)
+          ll1      <- family$d(yi, family$map2par(eta), log = TRUE)
           
           ## Negative
           eta[[j]] <- eta[[j]] - 2 * err01
-          ll2 <- family$d(yi, family$map2par(eta), log = TRUE)
-          # if(T ) print(ll2)
+          ll2      <- family$d(yi, family$map2par(eta), log = TRUE)
           
-          grad <- (ll1 - ll2) / (2 * err01)
-          # print(mean(grad))
+          grad     <- (ll1 - ll2) / (2 * err01)
           eta[[j]] <- eta[[j]] + err01
           
-          cc <-
-            try(cor(grad, X[[j]][, vardist[[j]], drop = FALSE]), F)
+          cc <- try(cor(grad, X[[j]][, vardist[[j]], drop = FALSE]), F)
           #[,-1]))
           cc[is.na(cc)] <- 0
           if (is.numeric(cc)) {
@@ -1350,29 +1268,28 @@ sdr.thresdesc <-
             jj <- which.max(abs(cc)) + 1
           } else {
             jj <- 1
-          }  # interecept if cor gives error
+          } # interecept if cor gives error
           
           
           if (max(abs(cc)) < cap) {
             grad <- 0
           } else {
             # average partial derivative with respect to best variable
-            grad <- t(grad) %*% X[[j]][,intvar[[j]][jj] , drop = FALSE]/ b.size 
-            
+            grad <- t(grad) %*% X[[j]][, intvar[[j]][jj], drop = FALSE] / b.size 
           }
           
           sign.list[[j]] <- grad
-          pos.list[[j]] <- jj # position in intvar
+          pos.list[[j]]  <- jj # position in intvar
           
         }
         
       }
                                     
       ps.final <- "no par"
-      pset <- powerset.list
+      pset     <- powerset.list
       for (j in nx) {
         if (sign.list[[j]] == 0 | sign.list[[j]] == -Inf) {
-          ok <- !grepl(j, pset)
+          ok   <- !grepl(j, pset)
           pset <- pset[ok]
         }
       }
@@ -1389,33 +1306,27 @@ sdr.thresdesc <-
         for (l in 1:length(pset)) {
           # ps <- !is.na(pset[l,])
           sign.list2 <- sign.list[pset[[l]]]
-          gnorm <- sqrt(sum(sign.list2 ^ 2))
+          gnorm      <- sqrt(sum(sign.list2 ^ 2))
           
           if (gnorm > eps) {
             sign.list2 <- eps * sign.list2 / gnorm
           }
           for (ij in pset[[l]]) {
-            sign.list2[ij] <- ifelse(
-              i < 0.8 * maxit1 & abs(sign.list2[ij]) <
-                nu * eps,
-              sign(sign.list2[ij]) * nu * eps,
-              sign.list2[ij]
-            )
+            sign.list2[ij] <- ifelse(i < 0.8 * maxit1 & abs(sign.list2[ij]) < nu * eps,
+                                     sign(sign.list2[ij]) * nu * eps,
+                                     sign.list2[ij])
           }
           
           for (j in pset[[l]]) {
-            jj <- pos.list[[j]]
+            jj   <- pos.list[[j]]
             grad <- sign.list2[[j]]
             
             coef_list_new[[j]][intvar[[j]][jj]] <- coef_list_new[[j]][intvar[[j]][jj]] + grad
-          
           }
           
           ## keep update only if oos information crit improves
           for (j in nx)
-            etaoos[[j]] <-
-            drop(Xoos[[j]] %*%
-                   coef_list_new[[j]])
+            etaoos[[j]] <- drop(Xoos[[j]] %*% coef_list_new[[j]])
           ll <- family$loglik(yoos, family$map2par(etaoos))
           ic.new <- -2 * ll 
           if (ic.new < ic.old) {
@@ -1423,39 +1334,38 @@ sdr.thresdesc <-
             for (j in nx)
               beta.final[[j]] <- coef_list_new[[j]]
             ps.final <- pset[[l]]
-            ic.old <- ic.new
+            ic.old   <- ic.new
           }
           for (j in pset[[l]])
             coef_list_new[[j]] <- beta.wip[[j]]
           
-        }  # this bracket is for pset
+        } # this bracket is for pset
         
         # save best coefs
         for (j in nx)
           coef_list_new[[j]] <- beta.final[[j]]
         
       }
-      #return(coef_list_new)
       return(c(coef_list_new, "ic.old" = ic.old, "ps.final" = ps.final))
     }
     
     #caps <- seq(0.2, 0.05, length.out = 5) # c(0.2, 0.15, 0.1, 0.5)
-    beta.list <- lapply(caps, FUN = function(x) beta)
-    names(beta.list) <- caps
-    intvar1 <- intvar
-    vardist1 <- vardist
-    ll.list <- list()
-    df.list <- cs.list <- NULL
+    beta.list <- setNames(lapply(caps, FUN = function(x) beta), caps)
+    intvar1   <- intvar
+    vardist1  <- vardist
+    ll.list   <- list()
+    df.list   <- cs.list <- NULL
     #seed <- rnorm(1)
     #vardist = mfd$varnames
-    for(c in 1:length(caps)){
-      ic.oos.list <- ic0.list <- NULL
-      ll0.list <- lloos.list <- 0
-      beta <- beta.list[[paste(caps[c])]]
-      cap <- caps[c]
-      intvar <- intvar1
+
+    for (c in 1:length(caps)) {
+      ic.oos.list <- ic0.list   <- NULL
+      ll0.list    <- lloos.list <- 0
+      beta    <- beta.list[[paste(caps[c])]]
+      cap     <- caps[c]
+      intvar  <- intvar1
       vardist <- vardist1
-      cap <- c(rep(cap, length.out = maxit), rep(0,length.out = maxit_refit))
+      cap     <- c(rep(cap, length.out = maxit), rep(0, length.out = maxit_refit))
       
       # # reordering, helpfull for small data to avoid bad starting batches
       # batch_ids[1:maxit] <- batch_ids[sample(1:maxit)]
@@ -1463,61 +1373,54 @@ sdr.thresdesc <-
       
       for (i in 2:maxit1) {
         # deselect non selected variables for updating if maxit_refit > 0
-        if(i == maxit +1){
-          for(j in nx){
+        if (i == maxit +1) {
+          for (j in nx) {
             cond <- beta[[j]][maxit,] != 0
             cond["(Intercept)"] <- TRUE
-            intvar[[j]] <- intvar[[j]][cond]
+            intvar[[j]]  <- intvar[[j]][cond]
             vardist[[j]] <- vardist[[j]][cond[-1]]
             # beta[[j]][maxit+1,] <- beta[[j]][maxit,] <- beta.list[[paste(caps[1])]][[j]][1,]
           }
         }
         
-        
         ## out of sample
         if (oos_batch == "next") {
-          if (i != maxit1) {
-            i.oos <- i + 1
-          } else {
-            i.oos <- 1
-          }
-        }
-        if (oos_batch == "same") {
+          i.oos <- if (i != maxit1) i + 1 else 1
+        } else if (oos_batch == "same") {
           i.oos <- i
-        }
-        if (oos_batch == "random") {
+        } else if (oos_batch == "random") {
           i.oos <- sample(maxit1, 1)
         }
         
         batch.oos <- batch_ids[[i.oos]]
         
         ## Extract response.
-        yi <- as.matrix(data[batch_ids[[i]],y])
+        yi    <- as.matrix(data[batch_ids[[i]],y])
         y.oos <- as.matrix(data[batch.oos,y])
         
         # draw batchwise from big.matrix and scale
-        XX <- as.matrix(data[batch_ids[[i]],vars])
+        XX    <- as.matrix(data[batch_ids[[i]],vars])
         XXoos <- as.matrix(data[batch.oos,vars])
-        if(scalex){
-          XX <- myscale(XX, x_mu = x_mu, x_sd = x_sd)
+        if (scalex) {
+          XX    <- myscale(XX, x_mu = x_mu, x_sd = x_sd)
           XXoos <- myscale(XXoos, x_mu = x_mu, x_sd = x_sd)
         }
         X <- Xoos <- list()
         for (j in nx) {
           ## Save last iteration.
-          beta[[j]][i, ] <- beta[[j]][i - 1L, ]
-          X[[j]] <- cbind( "(Intercept)" = rep(1,b.size), XX[,setdiff(colnames(beta[[j]]), "(Intercept)" )])
-          Xoos[[j]] <- cbind( "(Intercept)" = rep(1,b.size),XXoos[,setdiff(colnames(beta[[j]]), "(Intercept)" )])
+          beta[[j]][i, ]      <- beta[[j]][i - 1L, ]
+          X[[j]]              <- cbind( "(Intercept)" = rep(1,b.size), XX[,setdiff(colnames(beta[[j]]), "(Intercept)" )])
+          Xoos[[j]]           <- cbind( "(Intercept)" = rep(1,b.size),XXoos[,setdiff(colnames(beta[[j]]), "(Intercept)" )])
           colnames(Xoos[[j]]) <- colnames(X[[j]]) <- c("(Intercept)", setdiff(colnames(beta[[j]]), "(Intercept)" ))
         }
        
-        
         coef_list <- list()
         for (j in nx) {
           coef_list[[j]] <- beta[[j]][i-1, ]
         }
         
-        coef_list_new <- bs_fun(coef_list = coef_list, yi = yi, X = X, yoos = y.oos, Xoos = Xoos, nu = nu, nu_int = nu_int, eps = eps[i], eps_int = eps_int[i],
+        coef_list_new <- bs_fun(coef_list = coef_list, yi = yi, X = X, yoos = y.oos, Xoos = Xoos,
+                                nu = nu, nu_int = nu_int, eps = eps[i], eps_int = eps_int[i],
                                 intvar = intvar, vardist = vardist, b.size = nrow(X[[1]]), cap = cap[i])
         
         for (j in nx) {
@@ -1526,68 +1429,42 @@ sdr.thresdesc <-
         # Selected best subset
         ps.final <- unlist(coef_list_new[grep("ps.final", names(coef_list_new))])
         
-        
         # #Nonzero coefs
-        df <- sum(sapply(beta, function(b) {
-          sum(b[i, ] != 0)
-        }))
+        df <- sum(sapply(beta, function(b) sum(b[i, ] != 0)))
         # perhaps change to:
         # ic.old <- coef_list_new[["ic.old"]] + K * df
         
         # BIC = -2*loglik_batch + log(batch.size) * df              ####* (nrow(X[[1]])/N)
-        ic.old <- coef_list_new[["ic.old"]] + K * df #* (nrow(X[[1]])/N)
+        ic.old     <- coef_list_new[["ic.old"]] + K * df #* (nrow(X[[1]])/N)
         lloos.list <- c(lloos.list,  ic.old)
-        ll0.list <- c(lloos.list,  -coef_list_new[["ic.old"]]/2)
+        ll0.list   <- c(lloos.list,  -coef_list_new[["ic.old"]]/2)
         
         if (verbose) {
-          if (ia)
-            cat("\r")
-          cat(
-            "thres = ", formatC(cap[1], width = tw, flag = " "),
-            ", iter = ",
-            formatC(i, width = tw, flag = " "),
-            ", AIC = ",
-            formatC(round(ic.old, 4L), width = tw, flag = " "),
-            ", df = ",
-            formatC(df,
-                    width = tw, flag = " "),
-            ", ",
-            sprintf(pset_fmt, paste(ps.final, collapse = ", ")),
-            if (!ia)
-              "\n"
-            else
-              NULL,
-            sep = ""
-          )
+          if (ia) cat("\r")
+          cat("thres = ",  formatC(cap[1], width = tw, flag = " "),
+              ", iter = ", formatC(i, width = tw, flag = " "),
+              ", AIC = ",  formatC(round(ic.old, 4L), width = tw, flag = " "),
+              ", df = ",   formatC(df, width = tw, flag = " "),
+              ", ",       sprintf(pset_fmt, paste(ps.final, collapse = ", ")),
+              if (!ia) "\n" else NULL,
+              sep = "")
         }
         ## plot AIC and coef-paths
         if (plot & (i %% 10 == 0)) {
           
           par(mfrow = n2mfrow(length(nx) + 1))
-          plot(
-            y = lloos.list,
-            x = 1:i,
-            xlab = "Iteration",
-            ylab = "AIC"
-          )
+          plot(y = lloos.list, x = 1:i, xlab = "Iteration", ylab = "AIC")
           
           if (i > 5) {
             fit2 <- lowess(y = lloos.list, x = 1:i)
             lines(fit2)
           }
           for (j in nx) {
-            matplot(
-              beta[[j]][1:i, ],
-              type = "l",
-              lty = 1,
-              main = j,
-              xlab = "Iteration",
-              ylab = "Coefficients"
-            )
-            
+            matplot(beta[[j]][1:i, ], type = "l", lty = 1, main = j,
+                    xlab = "Iteration", ylab = "Coefficients")
           }
+
         }
-        
         
       }
       
@@ -1597,23 +1474,17 @@ sdr.thresdesc <-
       if (verbose) {
         cs <- mean(lloos.list[(maxit1-30):maxit1])
         
-        if (ia)
-          cat("\r")
-        cat(
-          paste0("Thres = ",round(caps[c],4), ", df = ",df, ", AIC = ", round(cs,3)),
-          "\n",
-          sep = ""
-        )
-        
+        if (ia) cat("\r")
+        cat(paste0("Thres = ",round(caps[c],4), ", df = ",df, ", AIC = ", round(cs,3)), "\n", sep = "")
       }
       
       # save betas
       beta.list[[paste(cap[1])]] <- beta
       
       # Continue the selection steps with smaller thresholds 
-      if(cap[1] != caps[length(caps)]){
-        for(j in nx){
-          beta.list[[paste(caps[c+1])]][[j]][1,] <- beta[[j]][maxit,]
+      if (cap[1] != caps[length(caps)]) {
+        for (j in nx) {
+          beta.list[[paste(caps[c + 1])]][[j]][1,] <- beta[[j]][maxit, ]
         }
       }
       
@@ -1624,17 +1495,15 @@ sdr.thresdesc <-
     
     
     final <- which.min(cs.list)
-    print(paste("selected thres = ", round(caps[final],3)))
-    for(j in nx) beta[[j]] <- beta.list[[final]][[j]][(maxit+1):maxit1,]
+    print(paste("selected thres = ", round(caps[final], 3)))
+    for (j in nx) beta[[j]] <- beta.list[[final]][[j]][(maxit + 1):maxit1, ]
     wmax <- maxit1
-    rval <-
-      list(coefficients = beta,
-           logLik = ll0.list[[final]],
-           maxit = list(var_selection = maxit, refitting = maxit_refit),
-           iter = maxit_refit, cap = caps[final])
-    
-    return(rval)
-  }
+
+    return(list(coefficients = beta,
+                logLik = ll0.list[[final]],
+                maxit = list(var_selection = maxit, refitting = maxit_refit),
+                iter = maxit_refit, cap = caps[final]))
+} # end of function: sdr.thresdesc
 
 # Helper Function to Draw Batch IDs (row ids)
 #
@@ -2242,7 +2111,7 @@ sdr.gradboostfit <-
     return(list(coefficients = beta,
                 logLik       = ll0.list,
                 maxit        = list(var_selection = maxit, refitting = maxit_refit)))
-  }
+} # end of function: sdr.gradboostfit
 
 # cyclic gradboosting with correlation filtering
 sdr.gradboostfit2 <-
@@ -2363,11 +2232,11 @@ sdr.gradboostfit2 <-
     # maximum log likelihood to maximum average loglikelihood
     # https://stats.stackexchange.com/questions/267847/motivation-for-average-log-likelihood
     
+    # TODO(R): Die funktion gibt es igendwie 5x an verschiedensten stellen!
     ma <- function(x, order = 20) {
       ma1 <- filter(x, rep(1 / order, order), sides = 1)
       ma2 <- rev(filter(rev(x), rep(1 / order, order), sides = 1))
-      ma3 <- ifelse(is.na(ma1), ma2, ma1)
-      ma3
+      return(ifelse(is.na(ma1), ma2, ma1))
     }
     
     for (i in 2:maxit1) {
@@ -2674,14 +2543,13 @@ sdr.gradboostfit2 <-
            maxit = list(var_selection = maxit, refitting = maxit_refit))
     
     return(rval)
-  }
+} # end of function: sdr.gradboostfit2
 
 
 ma <- function(x, order = 20) {
   ma1 <- filter(x, rep(1 / order, order), sides = 1)
   ma2 <- rev(filter(rev(x), rep(1 / order, order), sides = 1))
-  ma3 <- ifelse(is.na(ma1), ma2, ma1)
-  ma3
+  return(ifelse(is.na(ma1), ma2, ma1))
 }
 
 # cyclical gradboosting with correlation filtering
@@ -3103,13 +2971,10 @@ sdr.gradboostfit2_old <-
       )
     }
     
-    rval <-
-      list(coefficients = beta,
-           logLik = ll0.list,
-           maxit = maxit)
-    
-    return(rval)
-  }
+    return(list(coefficients = beta,
+                logLik = ll0.list,
+                maxit = maxit))
+} # end of function: sdr.gradboostfit2_old
 
 
 
@@ -3166,7 +3031,8 @@ model.frame.stagewise <- function(formula, data = NULL, ...) {
   } else {
     return(formula$model)
   }
-}
+} # end of function: model.frame.stagewise
+
 
 ## Model matrix.
 model.matrix.stagewise <- function(object, ...) {
@@ -3195,27 +3061,27 @@ model.matrix.stagewise <- function(object, ...) {
     # object$scaled[[i]][[j - 1]]$min) / xr } }
   }
   return(X)
-}
+} # end of function: model.matrix.stagewise
+
 
 ## Predict method.
-predict.stagewise <-
-  function(object,
-           newdata = NULL,
-           type = c("link", "parameter"),
-           drop = TRUE,
-           mstart = NULL,
-           mstop = NULL,
-           model = NULL,
-           ...) {
+predict.stagewise <- function(object,
+                              newdata = NULL,
+                              type = c("link", "parameter"),
+                              drop = TRUE,
+                              mstart = NULL,
+                              mstop = NULL,
+                              model = NULL,
+                              ...) {
     
     # Needed for sdr.treshdesc variant
-    if(is.null(mstop) & "iter" %in% names(object) ) mstop = object$iter
-    if(is.null(mstart) & "iter" %in% names(object) ) mstart = object$iter
+    if (is.null(mstop) & "iter" %in% names(object))  mstop  <- object$iter
+    if (is.null(mstart) & "iter" %in% names(object)) mstart <- object$iter
     
     if(is.null(newdata)) newdata <- object$X
     # All variables that are needed
     vars <- unique(unlist(object$varnames))
-    if(!length(vars) > 0){
+    if (!length(vars) > 0) {
       X <- model.matrix(object = ~ 1, data = data.frame(newdata))
     } else {
       formula_all <- as.formula(paste(" ~ ", paste0(vars, collapse = "+")))
@@ -3227,31 +3093,26 @@ predict.stagewise <-
         stop("Argument mstop must be a single number!")
     }
     maxit <- nrow(object$coefficients[[1]])
-    if (is.null(mstop))
-      mstop <- maxit
-    if (is.null(mstart))
-      mstart <- mstop
-    if (is.null(model))
-      model <- names(object$formula)
+    if (is.null(mstop))  mstop  <- maxit
+    if (is.null(mstart)) mstart <- mstop
+    if (is.null(model))  model  <- names(object$formula)
     if (is.character(model)) {
       model <- match.arg(model, names(object$formula), several.ok = TRUE)
     }
-    if (is.null(type))
-      type <- "link"
-    if (length(type) > 1)
-      type <- type[1]
+    if (is.null(type))     type <- "link"
+    if (length(type) > 1)  type <- type[1]
     
     eta <- list()
     
     for (j in model) {
-      eta[[j]] <- 0
+      eta[[j]]   <- 0
       iterations <- mstart:mstop
       for (i in iterations) {
-        eta[[j]] <- eta[[j]] + drop(as.matrix(X[,colnames(object$coefficients[[j]])]) %*% object$coefficients[[j]][i, ])
+        eta[[j]] <- eta[[j]] + drop(as.matrix(X[, colnames(object$coefficients[[j]])]) %*% object$coefficients[[j]][i, ])
       }
       eta[[j]] <- eta[[j]] / (mstop - mstart + 1)
       if (type != "link") {
-        linkinv <- make.link2(object$family$links[j])$linkinv
+        linkinv  <- make.link2(object$family$links[j])$linkinv
         eta[[j]] <- linkinv(eta[[j]])
       }
     }
@@ -3270,7 +3131,7 @@ coef.stagewise <- function(object,
                            ...) {
   
   # Needed for sdr.treshdesc variant
-  if(is.null(mstop) & "iter" %in% names(object) ) mstop = object$iter
+  if (is.null(mstop) & "iter" %in% names(object)) mstop <- object$iter
   
   coef_fun <- function(...) {
     if (!is.null(mstop)) {
@@ -3281,8 +3142,7 @@ coef.stagewise <- function(object,
     if (is.null(model))
       model <- names(object$formula)
     if (is.character(model))
-      model <-
-      match.arg(model, names(object$formula), several.ok = TRUE)
+      model <- match.arg(model, names(object$formula), several.ok = TRUE)
     else
       model <- names(object$formula)[model]
     maxit <- nrow(object$coefficients[[1]])
@@ -3292,13 +3152,11 @@ coef.stagewise <- function(object,
       keep <- floor(maxit * (1 - keep))
     coef <- list()
     for (j in model)
-      coef[[j]] <-
-      apply(object$coefficients[[j]][if (is.null(mstop))
-        keep:maxit
-        else
-          mstart:mstop, , drop = FALSE], 2, mean)
+      coef[[j]] <- apply(object$coefficients[[j]][if (is.null(mstop)) keep:maxit
+                                                  else mstart:mstop, , drop = FALSE], 2, mean)
     if (length(coef) < 2L)
       coef <- coef[[1L]]
+
     return(coef)
   }
   
@@ -3314,12 +3172,11 @@ coef.stagewise <- function(object,
     
     
     coef <- coef_fun(mstart = mstop, mstop = mstop, ...)
-    nc <- names(coef)
+    nc   <- names(coef)
     
     names(coef) <- nc
     
-    coef <- lapply(
-      nc,
+    coef <- lapply(nc,
       FUN = function(i) {
         ind <- coef[[i]] != 0
         ind[1] <- TRUE  # Intercept is always true
@@ -3349,13 +3206,9 @@ newformula <- function(object,
     cat("Last iteration is used as 'mstop' is not provided.")
   }
   
-  coef <-
-    coef.stagewise(object = object,
-                   mstop = mstop,
-                   refit = TRUE)
-  nc <- names(coef)
-  coef <- lapply(
-    nc,
+  coef <- coef.stagewise(object = object, mstop = mstop, refit = TRUE)
+  nc   <- names(coef)
+  coef <- lapply(nc,
     FUN = function(i) {
       xx <- setdiff(names(coef[[i]]), "(Intercept)")
       if (length(xx) == 0)
@@ -3396,27 +3249,25 @@ newformula <- function(object,
 summary.stagewise <- function(object,
                               digits = max(3, getOption("digits") - 3),
                               mstart = round(0.5 * length(object$logLik)),
-                              mstop = length(object$logLik),
+                              mstop  = length(object$logLik),
                               ...) {
   # for computing parameter summary
   parsum <- function(d, vec = mstart:mstop) {
     # TODO(R): Fails if you only have less than 4 iterations!
     dd <- t(d)[, 1:4]
     if (ncol(d) == 1) {
-      dd[1] <- mean(d[vec, ])
+      dd[1]   <- mean(d[vec, ])
       dd[2:4] <- quantile(d[vec, ], c(0.025, 0.5, 0.975))
-      dd <- matrix(dd, ncol = 4)
+      dd      <- matrix(dd, ncol = 4)
       rownames(dd) <- "(Intercept)"
     } else {
       if (length(vec) == 1) {
-        dd[, 1] <- t(apply(d[c(vec, vec), ], 2, mean))
-        dd[, 2:4] <-
-          t(apply(d[c(vec, vec), ], 2, quantile, c(0.025, 0.5, 0.975)))
+        dd[, 1]   <- t(apply(d[c(vec, vec), ], 2, mean))
+        dd[, 2:4] <- t(apply(d[c(vec, vec), ], 2, quantile, c(0.025, 0.5, 0.975)))
         # dd[,5] <- t(d[nrow(d),])
       } else {
-        dd[, 1] <- t(apply(d[vec, ], 2, mean))
-        dd[, 2:4] <-
-          t(apply(d[vec, ], 2, quantile, c(0.025, 0.5, 0.975)))
+        dd[, 1]   <- t(apply(d[vec, ], 2, mean))
+        dd[, 2:4] <- t(apply(d[vec, ], 2, quantile, c(0.025, 0.5, 0.975)))
         # dd[,5] <- t(d[nrow(d),])
       }
       
@@ -3588,13 +3439,12 @@ BIC.stagewise <- function(object, ...) {
 }
 
 
-plot.stagewise <-
-  function(x,
-           which = c("all", "coefficients", "AIC"),
-           K = 2,
-           bw = 0,
-           spar = TRUE,
-           ...) {
+plot.stagewise <- function(x,
+                           which = c("all", "coefficients", "AIC"),
+                           K = 2,
+                           bw = 0,
+                           spar = TRUE,
+                           ...) {
     if (length(which) > 1)
       which <- which[1]
     if (which == "all") {
@@ -3722,13 +3572,12 @@ plot.stagewise <-
   }
 
 
-residuals.stagewise <-
-  function(object,
-           type = c("quantile", "response"),
-           nsamps = NULL,
-           ...) {
+residuals.stagewise <- function(object,
+                                type = c("quantile", "response"),
+                                nsamps = NULL,
+                                ...) {
     family <- object$family
-    ynam <- colnames(object[["y"]])
+    ynam   <- colnames(object[["y"]])
     if(is.null(ynam)) ynam <- object[["y"]]
     
     if (!is.null(family$residuals)) {
@@ -3739,12 +3588,12 @@ residuals.stagewise <-
       }
     } else {
       type <- match.arg(type)
-      y <- NULL
+      y    <- NULL
       if (!is.null(nsamps)) {
-        y <- nsamps[, ynam]
+        y   <- nsamps[, ynam]
         par <- predict(object, newdata = nsamps, drop = FALSE, ...)
       } else {
-        y <- unlist(object$y)
+        y   <- unlist(object$y)
         par <- predict(object, newdata = NULL, drop = FALSE, ...)
       }
       # if (!is.null(object$y)) { y <- if (is.data.frame(object$y)) { if
@@ -3759,7 +3608,7 @@ residuals.stagewise <-
       nas <- attr(par, "na.action")
       if (!is.null(nas)) {
         if (is.null(dim(y))) {
-          
+          # TODO(R): Better if (!is.null(dim(y))) and remove this empty condition 
         } else {
           y <- y[-nas, ]
         }
@@ -3773,14 +3622,9 @@ residuals.stagewise <-
       if (type == "quantile") {
         if (is.null(family$p)) {
           type <- "response"
-          warning(
-            paste(
-              "no $p() function in family '",
-              family$family,
-              "', cannot compute quantile residuals, computing response resdiuals instead!",
-              sep = ""
-            )
-          )
+          warning(paste("no $p() function in family '", family$family,
+                  "', cannot compute quantile residuals, computing response resdiuals instead!",
+                  sep = ""))
         } else {
           discrete <- FALSE
           if (!is.null(family$type)) {
@@ -3791,16 +3635,16 @@ residuals.stagewise <-
             discrete <- TRUE
           if (discrete) {
             ymin <- min(y, na.rm = TRUE)
-            a <- family$p(ifelse(y == ymin, y, y - 1), par)
-            a <- ifelse(y == ymin, 0, a)
-            b <- family$p(y, par)
-            u <- runif(length(y), a, b)
-            u <- ifelse(u > 0.999999, u - 1e-16, u)
-            u <- ifelse(u < 1e-06, u + 1e-16, u)
-            res <- qnorm(u)
+            a    <- family$p(ifelse(y == ymin, y, y - 1), par)
+            a    <- ifelse(y == ymin, 0, a)
+            b    <- family$p(y, par)
+            u    <- runif(length(y), a, b)
+            u    <- ifelse(u > 0.999999, u - 1e-16, u)
+            u    <- ifelse(u < 1e-06, u + 1e-16, u)
+            res  <- qnorm(u)
           } else {
             prob <- family$p(y, par)
-            res <- qnorm(prob)
+            res  <- qnorm(prob)
             if (any(isnf <- !is.finite(res))) {
               warning("non finite quantiles from probabilities, set to NA!")
               res[isnf] <- NA
@@ -3810,12 +3654,7 @@ residuals.stagewise <-
         }
       }
       if (type == "response") {
-        mu <- if (is.null(family$mu)) {
-          function(par, ...) {
-            par[[1]]
-          }
-        } else
-          family$mu
+        mu  <- if (is.null(family$mu)) function(par, ...) par[[1]] else family$mu
         res <- y - mu(par)
         attr(res, "type") <- "Response"
       }
@@ -3827,17 +3666,15 @@ residuals.stagewise <-
   }
 
 
-c95 <- function (x)
-{
+c95 <- function (x) {
   qx <- quantile(x, probs = c(0.025, 0.975), na.rm = TRUE)
   return(c(qx[1], Mean = mean(x, na.rm = TRUE), qx[2]))
 }
 
-plot.stagewise_residuals <-
-  function(x,
-           which = c("hist-resid", "qq-resid", "wp"),
-           spar = TRUE,
-           ...) {
+plot.stagewise_residuals <- function(x,
+                                     which = c("hist-resid", "qq-resid", "wp"),
+                                     spar = TRUE,
+                                     ...) {
     which.match <- c("hist-resid", "qq-resid", "wp")
     if (!is.character(which)) {
       if (any(which > 3L))
@@ -4106,15 +3943,14 @@ plot.stagewise_residuals <-
       }
     }
     return(invisible(NULL))
-  }
+} # end of function: plot.stagewise_residuals
 
 
 
-delete.args <-
-  function(fun = NULL,
-           args = NULL,
-           not = NULL,
-           package = NULL) {
+delete.args <- function(fun = NULL,
+                        args = NULL,
+                        not = NULL,
+                        package = NULL) {
     if (is.character(fun) & !is.null(package))
       fun <-
         eval(parse(text = paste(
@@ -4170,49 +4006,38 @@ rps <- function(obs, pred) {
 ma <- function(x, order = 20) {
   ma1 <- filter(x, rep(1 / order, order), sides = 1)
   ma2 <- rev(filter(rev(x), rep(1 / order, order), sides = 1))
-  ma3 <- ifelse(is.na(ma1), ma2, ma1)
-  ma3
+  return(ifelse(is.na(ma1), ma2, ma1))
 }
 
 
 # formula updating after variable selection step
-f.update <-
-  function(model,
-           mstop,
-           bb = 0,
-           names = NULL,
-           max.char = 24) {
+f.update <- function(model,
+                     mstop,
+                     bb = 0,
+                     names = NULL,
+                     max.char = 24) {
     l <- length(model[["coefficients"]])
     f <- list()
     for (i in 1:l) {
       dd <- 2:ncol(model[["coefficients"]][[i]])
-      if (mstop > bb)
-        int <- (mstop - bb):mstop
-      if (mstop <= bb)
-        int <- mstop:(mstop + bb)
+      #if (mstop > bb)  int <- (mstop - bb):mstop
+      #if (mstop <= bb) int <- mstop:(mstop + bb)
+      int <- if (mstop > bb) (mstop - bb):mstop else mstop:(mstop + bb)
       
       coef <- t(colMeans(model[["coefficients"]][[i]][int, dd]))
       
-      x <- colnames(coef)[abs(coef) > 0]
-      nn <-
-        c(1:max.char,
-          "inf_cin",
-          "cin",
-          "cloud",
-          "no_cloud",
-          paste0(0, 1:max.char))
-      if (!is.null(names))
+      x  <- colnames(coef)[abs(coef) > 0]
+      nn <- c(1:max.char, "inf_cin", "cin", "cloud", "no_cloud", paste0(0, 1:max.char))
+      if (!is.null(names)) {
         for (j in names) {
-          if (any(paste0(j, nn) %in% x))
-            x <- c(setdiff(x, paste0(j, nn)), j)
+          if (any(paste0(j, nn) %in% x)) x <- c(setdiff(x, paste0(j, nn)), j)
         }
+      }
       
-      if (length(x) == 0)
-        x = "1"
+      if (length(x) == 0) x = "1"
       
-      f[i] <-
-        ifelse(i == 1, paste(names(model[["y"]]), " ~ ", paste(x, collapse = "+")),
-               paste(" ~ ", paste(x, collapse = "+")))
+      f[i] <- ifelse(i == 1, paste(names(model[["y"]]), " ~ ", paste(x, collapse = "+")),
+                     paste(" ~ ", paste(x, collapse = "+")))
       
     }
     
@@ -4223,27 +4048,22 @@ f.update <-
 
 
 f2.update <- function(model, mstop, bb = 0) {
-  dd <- 2:ncol(model[["coefficients"]][["mu"]])
-  mu.coef <-
-    t(colMeans(model[["coefficients"]][["mu"]][mstop - bb:mstop, dd]))
-  sigma.coef <-
-    t(colMeans(model[["coefficients"]][["sigma"]][mstop - bb:mstop,
+  dd         <- 2:ncol(model[["coefficients"]][["mu"]])
+  mu.coef    <- t(colMeans(model[["coefficients"]][["mu"]][mstop - bb:mstop, dd]))
+  sigma.coef <- t(colMeans(model[["coefficients"]][["sigma"]][mstop - bb:mstop,
                                                   dd]))
   # nu.coef <- t(colMeans(model[['coefficients']][['nu']][mstop-bb:mstop,dd]))
   
-  mu.x <- colnames(mu.coef)[abs(mu.coef) > 0]
+  mu.x    <- colnames(mu.coef)[abs(mu.coef) > 0]
   sigma.x <- colnames(sigma.coef)[abs(sigma.coef) > 0]
   # nu.x <- colnames(mu.coef)[abs(nu.coef) > 0]
   
-  if (length(mu.x) == 0)
-    mu.x = "1"
-  if (length(sigma.x) == 0)
-    sigma.x = "1"
+  if (length(mu.x) == 0)      mu.x = "1"
+  if (length(sigma.x) == 0)   sigma.x = "1"
   # if(length(nu.x) == 0) nu.x = '1'
   
   f.mu <- as.formula(paste("y ~ ", paste(mu.x, collapse = "+")))
-  f.sigma <-
-    as.formula(paste(" ~ ", paste(sigma.x, collapse = "+")))
+  f.sigma <- as.formula(paste(" ~ ", paste(sigma.x, collapse = "+")))
   # f.nu <- as.formula(paste(' ~ ', paste(nu.x, collapse = '+')))
   
   f <- list(f.mu, f.sigma)
@@ -4252,82 +4072,65 @@ f2.update <- function(model, mstop, bb = 0) {
 
 
 f3.update <- function(model, mstop, bb = 0) {
-  dd <- 2:ncol(model[["coefficients"]][["mu"]])
-  mu.coef <-
-    t(colMeans(model[["coefficients"]][["mu"]][mstop - bb:mstop, dd]))
-  sigma.coef <-
-    t(colMeans(model[["coefficients"]][["sigma"]][mstop - bb:mstop,
+  dd         <- 2:ncol(model[["coefficients"]][["mu"]])
+  mu.coef    <- t(colMeans(model[["coefficients"]][["mu"]][mstop - bb:mstop, dd]))
+  sigma.coef <- t(colMeans(model[["coefficients"]][["sigma"]][mstop - bb:mstop,
                                                   dd]))
-  nu.coef <-
-    t(colMeans(model[["coefficients"]][["nu"]][mstop - bb:mstop, dd]))
+  nu.coef <- t(colMeans(model[["coefficients"]][["nu"]][mstop - bb:mstop, dd]))
   
-  mu.x <- colnames(mu.coef)[abs(mu.coef) > 0]
+  mu.x    <- colnames(mu.coef)[abs(mu.coef) > 0]
   sigma.x <- colnames(sigma.coef)[abs(sigma.coef) > 0]
-  nu.x <- colnames(nu.coef)[abs(nu.coef) > 0]
+  nu.x    <- colnames(nu.coef)[abs(nu.coef) > 0]
   
-  if (length(mu.x) == 0)
-    mu.x = "1"
-  if (length(sigma.x) == 0)
-    sigma.x = "1"
-  if (length(nu.x) == 0)
-    nu.x = "1"
+  if (length(mu.x) == 0)     mu.x = "1"
+  if (length(sigma.x) == 0)  sigma.x = "1"
+  if (length(nu.x) == 0)     nu.x = "1"
   
-  f.mu <- as.formula(paste("y ~ ", paste(mu.x, collapse = "+")))
-  f.sigma <-
-    as.formula(paste(" ~ ", paste(sigma.x, collapse = "+")))
-  f.nu <- as.formula(paste(" ~ ", paste(nu.x, collapse = "+")))
+  f.mu    <- as.formula(paste("y ~ ", paste(mu.x, collapse = "+")))
+  f.sigma <- as.formula(paste(" ~ ", paste(sigma.x, collapse = "+")))
+  f.nu    <- as.formula(paste(" ~ ", paste(nu.x, collapse = "+")))
   
   f <- list(f.mu, f.sigma, f.nu)
   return(f)
 }
 
 f4.update <- function(model, mstop, bb = 0) {
-  dd <- 2:ncol(model[["coefficients"]][["mu"]])
-  mu.coef <-
-    t(colMeans(model[["coefficients"]][["mu"]][mstop - bb:mstop, dd]))
-  sigma.coef <-
-    t(colMeans(model[["coefficients"]][["sigma"]][mstop - bb:mstop,
+  dd         <- 2:ncol(model[["coefficients"]][["mu"]])
+  mu.coef    <- t(colMeans(model[["coefficients"]][["mu"]][mstop - bb:mstop, dd]))
+  sigma.coef <- t(colMeans(model[["coefficients"]][["sigma"]][mstop - bb:mstop,
                                                   dd]))
-  nu.coef <-
-    t(colMeans(model[["coefficients"]][["nu"]][mstop - bb:mstop, dd]))
-  tau.coef <-
-    t(colMeans(model[["coefficients"]][["tau"]][mstop - bb:mstop, dd]))
+  nu.coef  <- t(colMeans(model[["coefficients"]][["nu"]][mstop - bb:mstop, dd]))
+  tau.coef <- t(colMeans(model[["coefficients"]][["tau"]][mstop - bb:mstop, dd]))
   
-  mu.x <- colnames(mu.coef)[abs(mu.coef) > 0]
+  mu.x    <- colnames(mu.coef)[abs(mu.coef) > 0]
   sigma.x <- colnames(sigma.coef)[abs(sigma.coef) > 0]
-  nu.x <- colnames(nu.coef)[abs(nu.coef) > 0]
-  tau.x <- colnames(tau.coef)[abs(tau.coef) > 0]
+  nu.x    <- colnames(nu.coef)[abs(nu.coef) > 0]
+  tau.x   <- colnames(tau.coef)[abs(tau.coef) > 0]
   
-  if (length(mu.x) == 0)
-    mu.x = "1"
-  if (length(sigma.x) == 0)
-    sigma.x = "1"
-  if (length(nu.x) == 0)
-    nu.x = "1"
-  if (length(tau.x) == 0)
-    tau.x = "1"
+  if (length(mu.x) == 0)     mu.x = "1"
+  if (length(sigma.x) == 0)  sigma.x = "1"
+  if (length(nu.x) == 0)     nu.x = "1"
+  if (length(tau.x) == 0)    tau.x = "1"
   
-  f.mu <- as.formula(paste("y ~ ", paste(mu.x, collapse = "+")))
-  f.sigma <-
-    as.formula(paste(" ~ ", paste(sigma.x, collapse = "+")))
-  f.nu <- as.formula(paste(" ~ ", paste(nu.x, collapse = "+")))
-  f.tau <- as.formula(paste(" ~ ", paste(tau.x, collapse = "+")))
+  f.mu    <- as.formula(paste("y ~ ", paste(mu.x, collapse = "+")))
+  f.sigma <- as.formula(paste(" ~ ", paste(sigma.x, collapse = "+")))
+  f.nu    <- as.formula(paste(" ~ ", paste(nu.x, collapse = "+")))
+  f.tau   <- as.formula(paste(" ~ ", paste(tau.x, collapse = "+")))
   
   f <- list(f.mu, f.sigma, f.nu, f.tau)
   return(f)
 }
 
 
-rootogram <-
-  function(model,
-           newdata = NULL,
-           counts = NULL,
-           maxit,
-           bb = 20,
-           max.k = NULL,
-           max.ylim = NULL,
-           main = NULL,
-           score = F) {
+rootogram <- function(model,
+                      newdata = NULL,
+                      counts = NULL,
+                      maxit,
+                      bb = 20,
+                      max.k = NULL,
+                      max.ylim = NULL,
+                      main = NULL,
+                      score = F) {
     range <- c(maxit - bb, maxit)
     print(range)
     
@@ -4402,8 +4205,7 @@ rootogram <-
       lwd = 1
     )
     
-    
-  }
+} # end of function: rootogram
 
 
 
@@ -4412,14 +4214,11 @@ rootogram <-
 prob.stop <- function(model, cyclic = FALSE, nnoise) {
   iter.first.p <- NULL
   for (i in names(model[["coefficients"]])) {
-    ifp <-
-      which.max(rowSums(model[["coefficients"]][[i]][, paste0("p", 1:(6 +
-                                                                        nnoise))] != 0) != 0)
+    ifp <- which.max(rowSums(model[["coefficients"]][[i]][, paste0("p", 1:(6 + nnoise))] != 0) != 0)
     iter.first.p <- c(iter.first.p, ifp)
   }
   r <- iter.first.p - 1
-  if (!cyclic)
-    r <- min(r)
+  if (!cyclic) r <- min(r)
   
   return(r)
 }

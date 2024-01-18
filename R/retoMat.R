@@ -90,11 +90,11 @@ print.retoMat <- function(x, n = 6, ...) {
     invisible(x)
 }
 
-summary.retoMat <- function(x, ...) {
-    data.frame(Class = class(x),
-               nrow = x$dim$nrow,
-               ncol = x$dim$ncol,
-               file = x$file)
+summary.retoMat <- function(object, ...) {
+    data.frame(Class = class(object),
+               nrow = object$dim$nrow,
+               ncol = object$dim$ncol,
+               file = object$file)
 }
 
 

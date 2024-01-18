@@ -93,10 +93,7 @@ Rcpp::List retoMat(std::string file, int skip = 0,
             colnames[i] = val.c_str();
         }
     } else {
-        for (int i = 0; i < ncol; i++) {
-            Rcout << i;
-            colnames[i] = "V" + to_string(i);
-        }
+        for (int i = 0; i < ncol; i++) colnames[i] = "V" + to_string(i);
     }
     //Rcout << "[cpp] Colnames: " << colnames << "\n";
 
