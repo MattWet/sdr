@@ -123,6 +123,17 @@ tmp <- as.matrix(data[ii, jj]); rownames(tmp) <- NULL
 expect_equal(rmat[ii, jj], tmp, info = "Testing subsetting by index")
 
 
+# -------------------------------------------------------
+# Draw same rows/cols multiple times
+ii <- c(10, 10, 10, 3, 3)
+jj <- c(7, 7, 3, 3, 1, 1)
+
+tmp <- as.matrix(data[ii, jj])
+rownames(tmp) <- NULL
+colnames(tmp) <- gsub("\\.[0-9]+$", "", colnames(tmp))
+expect_equal(rmat[ii, jj], tmp,
+             info = "Drawing rows/columns more than once")
+
 
 # -------------------------------------------------------
 # Testing stndardization; for our data.frame we have to

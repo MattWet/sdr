@@ -22,8 +22,8 @@ read.retoMat <- function(file, skip = 0, header = TRUE, sep = ",", verbose = FAL
 
 `[.retoMat` <- function (x, i, j, standardize = FALSE, drop = FALSE) {
 
-    i <- unique(as.integer(i))
-    j <- if (missing(j)) seq_len(x$dim$ncol) else unique(j)
+    i <- as.integer(i)
+    if (missing(j)) j <- seq_len(x$dim$ncol)
 
     # If character, translate to integer
     if (is.character(j)) {
@@ -40,8 +40,10 @@ read.retoMat <- function(file, skip = 0, header = TRUE, sep = ",", verbose = FAL
         stop("index `i` out of range (must be within {1, ", x$dim$ncol, "}")
 
     # Calling cpp for getting the data
-    res <- retoMat_subset(x, sort(i), sort(j), standardize = standardize, sep = x$sep)
-    res <- res[match(i, sort(i)), match(j, sort(j)), drop = FALSE]
+    res <- retoMat_subset(x, sort(unique(i)), sort(unique(j)),
+                          standardize = standardize, sep = x$sep)
+
+    res <- res[match(i, sort(unique(i))), match(j, sort(unique(j))), drop = FALSE]
 
     if (length(j) == 1 & drop) {
         res <- as.vector(res)
