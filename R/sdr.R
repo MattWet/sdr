@@ -3561,7 +3561,8 @@ AIC.stagewise <- function(object, K = 2, ...) {
 }
 
 BIC.stagewise <- function(object, ...) {
-  AIC.stagewise(object, K = log(object$nobs), ...)
+  structure(AIC.stagewise(object, K = log(object$nobs), ...),
+            class = "stagewise_BIC")
 }
 
 
