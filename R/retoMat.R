@@ -40,25 +40,28 @@ read.retoMat <- function(file, skip = 0, header = TRUE, sep = ",", verbose = FAL
         stop("index `i` out of range (must be within {1, ", x$dim$ncol, "}")
 
     # Calling cpp for getting the data
-    res <- retoMat_subset(x, sort(i), sort(j), standardize = standardize)
-    res <- res[order(i), order(j), drop = FALSE]
+    res <- retoMat_subset(x, sort(i), sort(j), standardize = standardize, sep = x$sep)
+    res <- res[match(i, sort(i)), match(j, sort(j)), drop = FALSE]
 
-    if ((length(i) == 1 | length(j) == 1) & drop) {
+    if (length(j) == 1 & drop) {
         res <- as.vector(res)
+    } else if (length(i) == 1 & drop) {
+        res <- setNames(as.vector(res), colnames(res))
     }
     return(res)
 
 }
 
+dim.retoMat <- function(x) c(x$dim$nrow, x$dim$ncol)
 
 head.retoMat <- function(x, n = 6, standardize = FALSE, ...) {
     i <- seq_len(n)
     x[i[i <= x$dim$nrow], , standardize = standardize]
 }
 
-tail.retoMat <- function(x, n = 6, standardized = FALSE, ...) {
+tail.retoMat <- function(x, n = 6, standardize = FALSE, ...) {
     i <- rev(x$dim$nrow - seq_len(n) + 1)
-    x[i[i >= 1], , standardized = standardized]
+    x[i[i >= 1], , standardize = standardize]
 }
 
 print.retoMat <- function(x, n = 6, ...) {

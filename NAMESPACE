@@ -41,6 +41,7 @@ S3method("print", "summary.stagewise")
 # -------------------------------------
 useDynLib(sdr)
 importFrom(Rcpp, sourceCpp)
+S3method("dim",     "retoMat")
 S3method("head",    "retoMat")
 S3method("tail",    "retoMat")
 S3method("[",       "retoMat")

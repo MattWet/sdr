@@ -127,7 +127,7 @@ Rcpp::List retoMat(std::string file, int skip = 0,
     if (verbose)
         Rcout << "[cpp] Calculating mean and standard deviation (row-wise)\n";
     for (int i = 0; i < ncol; i++) {
-        sd[i]    = sqrt((xsumsquared[i] - xsum[i] * xsum[i] / nrow) / nrow);
+        sd[i]    = sqrt((xsumsquared[i] - xsum[i] * xsum[i] / nrow) / (nrow - 1));
         mean[i]  = xsum[i] / nrow;
     }
 
@@ -141,6 +141,7 @@ Rcpp::List retoMat(std::string file, int skip = 0,
     //Rcpp::List res = Rcpp::List::create(colnames);
     List rval = Rcpp::List::create(Named("file") = file,
                                    Named("header") = header,
+                                   Named("sep")  = sep,
                                    Named("skip") = skip,
                                    Named("dim")  = dim,
                                    Named("colnames") = colnames,
@@ -191,7 +192,7 @@ Rcpp::NumericMatrix retoMat_subset(const List & x, IntegerVector i, IntegerVecto
     int ni = i.size(), nj = j.size();
     Rcpp::List dim = x["dim"];
     int ncol = as<int>(dim["ncol"]);
-    int nrow = as<int>(dim["nrow"]);
+    ///int nrow = as<int>(dim["nrow"]);
     int skip = as<int>(x["skip"]);
     bool header = as<bool>(x["header"]);
     std::string file = x["file"];
