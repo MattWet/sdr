@@ -11,6 +11,8 @@ Description: The implementation provides infrastructure for the estimation of di
   regression models using efficient stagewise algorithms.
 Depends: R (>= 3.5.0), gamlss.dist, Formula, Matrix
 Suggests: colorspace, knitr, scoringRules, parallel, ff, bigmemory
+LinkingTo: Rcpp
+Imports: Rcpp
 License: GPL-2 | GPL-3
 LazyLoad: yes
 RoxygenNote: 7.0.2

@@ -789,7 +789,9 @@ sdr <-
     # delete bm.csv on exit
     # quick_ffdf means data is in format of modelframe
     if(!quick_ffdf){
-      if(inherits(data, "ffdf") ){
+      if (inherits(data, "retoMat")) {
+        cat("Working with retoMat object ...\n")
+      } else if (inherits(data, "ffdf") ){
         stopifnot(requireNamespace("ff"))
         outfile <- tempfile(fileext = ".csv")
         
@@ -829,60 +831,68 @@ sdr <-
       }
     }
     
-    if(!light & !inherits(data, "ffdf")){
-      mfd$y <- as.matrix(data[,y])
-      colnames(mfd$y) <- y
-      mfd$X <- data[,vars]
-    }
-
-    x_mu <- x_sd <- NULL
-    if(length(vars) > 0 & scalex){
-      # Scaling
-      if (is.matrix(data)) {
-        if(length(vars) > 1){
-          x_mu <- apply(data[,vars], 2, mean)
-          x_sd <- apply(data[,vars], 2, sd)
-        } else {
-            x_mu <- mean(data[,vars])
-            x_sd <- sd(data[,vars])
-          }  
-      } else if (inherits(data, "ffdf")) {
-        # Now we need to 'batch' trough the big.matrix and calculate the mean
-        bm_mu <- function(x, BATCHSIZE = 20000) {
-          i1   <- seq(1, nrow(x), by = BATCHSIZE) # Starting index
-          rval <- lapply(i1, function(i) {
-            ii <- seq.int(i, pmin(i + BATCHSIZE - 1, nrow(x))) # Indices
-            if(length(vars > 1)) {
-              ret <- apply(x[ii, vars], 2, sum)
-            } else {
-              ret <- sum(x[ii, vars])
-            }
-            return(ret)
-          })
-          return(colSums(do.call(rbind, rval)) / nrow(x))
-        }
-        
-        bm_sd <- function(x, mu, BATCHSIZE = 20000) {
-          i1   <- seq(1, nrow(x), by = BATCHSIZE) # Starting index
-          fn <- function(i) {
-            ii  <- seq.int(i, pmin(i + BATCHSIZE - 1, nrow(x))) # Indices
-            z   <- x[ii, vars]
-            return(sapply(colnames(z), function(n) sum((z[, n] - mu[[n]])^2)))
-          }
-          rval <- lapply(i1, fn)
-          return(sqrt(colSums(do.call(rbind, rval)) / nrow(x)))
-        }
-        
-        x_mu <- bm_mu(data)
-        x_sd <- bm_sd(data, mu = x_mu)
+    # In case we have a retoMat object we don't have to
+    # do this step as we already have our scalings on
+    # the object (data$scale).
+    if (!inherits(data, "retoMat")) {
+      if(!light & !inherits(data, "ffdf")){
+        mfd$y <- as.matrix(data[,y])
+        colnames(mfd$y) <- y
+        mfd$X <- data[,vars]
       }
-    } 
+
+      x_mu <- x_sd <- NULL
+      if(length(vars) > 0 & scalex){
+        # Scaling
+        if (is.matrix(data)) {
+          if(length(vars) > 1){
+            x_mu <- apply(data[,vars], 2, mean)
+            x_sd <- apply(data[,vars], 2, sd)
+          } else {
+              x_mu <- mean(data[,vars])
+              x_sd <- sd(data[,vars])
+            }  
+        } else if (inherits(data, "ffdf")) {
+          # Now we need to 'batch' trough the big.matrix and calculate the mean
+          bm_mu <- function(x, BATCHSIZE = 20000) {
+            i1   <- seq(1, nrow(x), by = BATCHSIZE) # Starting index
+            rval <- lapply(i1, function(i) {
+              ii <- seq.int(i, pmin(i + BATCHSIZE - 1, nrow(x))) # Indices
+              if(length(vars > 1)) {
+                ret <- apply(x[ii, vars], 2, sum)
+              } else {
+                ret <- sum(x[ii, vars])
+              }
+              return(ret)
+            })
+            return(colSums(do.call(rbind, rval)) / nrow(x))
+          }
+          
+          bm_sd <- function(x, mu, BATCHSIZE = 20000) {
+            i1   <- seq(1, nrow(x), by = BATCHSIZE) # Starting index
+            fn <- function(i) {
+              ii  <- seq.int(i, pmin(i + BATCHSIZE - 1, nrow(x))) # Indices
+              z   <- x[ii, vars]
+              return(sapply(colnames(z), function(n) sum((z[, n] - mu[[n]])^2)))
+            }
+            rval <- lapply(i1, fn)
+            return(sqrt(colSums(do.call(rbind, rval)) / nrow(x)))
+          }
+          
+          x_mu <- bm_mu(data)
+          x_sd <- bm_sd(data, mu = x_mu)
+        }
+      } 
+    } # End of !inherits(data, "retoMat")
     
-    if(is.matrix(data) | inherits(data, "ffdf") | inherits(data, "big.matrix")){
+    if (is.matrix(data) | inherits(data, "ffdf") | inherits(data, "big.matrix")){
       ndata <- nrow(data)
+    } else if (inherits(data, "retoMat")) {
+      ndata <- data$dim$nrow
     } else {
       ndata <- 1
     }
+
     # nobs = batchsize
     if (is.null(batch_ids)){
       nobs <- ndata
@@ -1017,6 +1027,12 @@ sdr <-
         stop("Whoops, we should never end up here.")
     }
     
+    # Well, seems we need to extract the scaling factors
+    # to de-standardize the coefficients here ...
+    if (inherits(data, "retoMat")) {
+        x_mu <- data$scale$mean
+        x_sd <- data$scale$sd
+    }
     
     if (scalex) {
       for (i in names(formula)) {
@@ -1681,7 +1697,7 @@ sdr.gradboostfit <-
     eps <- rep(eps, length.out = maxit1)
     eps_int <- rep(eps_int, length.out = maxit1)
     
-    N  <- nrow(data)
+    N  <- if (inherits(data, "retoMat")) data$dim$nrow else nrow(data)
     nx <- names(vardist)
 
     # If the user provided a list of ids for the batches: check
@@ -1806,13 +1822,20 @@ sdr.gradboostfit <-
           bids$current
       } else stop("Whoops, unknown oos_batch case; we should never end up here")
 
-      y.oos <- as.matrix(data[bids$oos, y])
-      # draw batchwise from big.matrix and scale
-      XX <- as.matrix(data[bids$current, vars])
-      XXoos <- as.matrix(data[bids$oos, vars])
-      if (scalex){
-        XX <- myscale(XX, x_mu = x_mu, x_sd = x_sd)
-        XXoos <- myscale(XXoos, x_mu = x_mu, x_sd = x_sd)
+      if (inherits(data, "retoMat")) {
+        y.oos <- data[bids$oos, y]
+        # draw batchwise from big.matrix and scale
+        XX    <- data[bids$current, vars, standardize = scalex]
+        XXoos <- data[bids$oos, vars,     standardize = scalex]
+      } else {
+        y.oos <- as.matrix(data[bids$oos, y])
+        # draw batchwise from big.matrix and scale
+        XX    <- as.matrix(data[bids$current, vars])
+        XXoos <- as.matrix(data[bids$oos, vars])
+        if (scalex){
+          XX <- myscale(XX, x_mu = x_mu, x_sd = x_sd)
+          XXoos <- myscale(XXoos, x_mu = x_mu, x_sd = x_sd)
+        }
       }
       X <- Xoos <- list()
 
@@ -2175,22 +2198,28 @@ sdr.gradboostfit <-
     ## bids$oos is the last out-of-sample batch index vector.
     ## If oos_batch = 'next' is used this one should be the
     ## first one again (identical to bids$initial).
-    yoos <- as.matrix(data[bids$oos, y])
     
-    XX <- as.matrix(data[bids$oos, vars])
-    if (scalex) XX <- myscale(XX, x_mu = x_mu, x_sd = x_sd)
+    if (inherits(data, "retoMat")) {
+        y.oos <- data[bids$oos, y]
+        XX    <- data[bids$oos, vars, standardize = scalex]
+    } else {
+        y.oos <- as.matrix(data[bids$oos, y])
+        XX    <- as.matrix(data[bids$oos, vars])
+        if (scalex) XX <- myscale(XX, x_mu = x_mu, x_sd = x_sd)
+    }
 
     X <- list()
     for (j in nx) {
-      if(ncol(XX) == 1){
-        if(ncol(beta[[j]]) == 1 ){
-          Xoos[[j]] <- cbind( "(Intercept)" = rep(1,b.size))
+      if (ncol(XX) == 1){
+        if (ncol(beta[[j]]) == 1 ) {
+          Xoos[[j]] <- cbind("(Intercept)" = rep(1, b.size))
         } else {
-          Xoos[[j]] <- cbind( "(Intercept)" = rep(1,b.size),XXoos)
+          Xoos[[j]] <- cbind("(Intercept)" = rep(1, b.size), XXoos)
         }
         colnames(Xoos[[j]]) <- colnames(beta[[j]]) 
       } else {
-        Xoos[[j]] <- cbind( "(Intercept)" = rep(1,b.size),XXoos[,setdiff(colnames(beta[[j]]), "(Intercept)" )])
+        Xoos[[j]]   <- cbind("(Intercept)" = rep(1, b.size),
+                             XXoos[, setdiff(colnames(beta[[j]]), "(Intercept)" )])
         colnames(Xoos[[j]]) <- c("(Intercept)", setdiff(colnames(beta[[j]]), "(Intercept)" ))
       }
     } 
@@ -2200,29 +2229,19 @@ sdr.gradboostfit <-
     }
    
     ## Compute 'out of sample' log-likelihood.
-    ll0 <- family$loglik(yoos, family$map2par(eta))
+    ll0      <- family$loglik(y.oos, family$map2par(eta))
     ll0.list <- c(ll0.list, ll0)
     
     if (verbose) {
-      if (ia)
-        cat("\r")
-      cat(
-        "iter = ",
-        formatC(i, width = tw, flag = " "),
-        ", logLik = ",
-        formatC(round(ll,
-                      4L), width = tw, flag = " "),
-        "\n",
-        sep = ""
-      )
+      if (ia) cat("\r")
+      cat("iter = ", formatC(i, width = tw, flag = " "), ", ",
+          "logLik = ", formatC(round(ll, 4L), width = tw, flag = " "), "\n",
+          sep = "")
     }
     
-    rval <-
-      list(coefficients = beta,
-           logLik = ll0.list,
-           maxit = list(var_selection = maxit, refitting = maxit_refit))
-    
-    return(rval)
+    return(list(coefficients = beta,
+                logLik       = ll0.list,
+                maxit        = list(var_selection = maxit, refitting = maxit_refit)))
   }
 
 # cyclic gradboosting with correlation filtering
