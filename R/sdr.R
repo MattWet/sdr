@@ -742,8 +742,8 @@ sdr <- function(formula,
     # delete bm.csv on exit
     # quick_ffdf means data is in format of modelframe
     if(!quick_ffdf){
-      if (inherits(data, "retoMat")) {
-        cat("Working with retoMat object ...\n")
+      if (inherits(data, "binmm")) {
+        cat("Working with binmm object ...\n")
       } else if (inherits(data, "ffdf") ){
         stopifnot(requireNamespace("ff"))
         outfile <- tempfile(fileext = ".csv")
@@ -784,10 +784,10 @@ sdr <- function(formula,
       }
     }
     
-    # In case we have a retoMat object we don't have to
+    # In case we have a binmm object we don't have to
     # do this step as we already have our scalings on
     # the object (data$scale).
-    if (!inherits(data, "retoMat")) {
+    if (!inherits(data, "binmm")) {
       if(!light & !inherits(data, "ffdf")){
         mfd$y <- as.matrix(data[,y])
         colnames(mfd$y) <- y
@@ -836,11 +836,11 @@ sdr <- function(formula,
           x_sd <- bm_sd(data, mu = x_mu)
         }
       } 
-    } # End of !inherits(data, "retoMat")
+    } # End of !inherits(data, "binmm")
     
     if (is.matrix(data) | inherits(data, "ffdf") | inherits(data, "big.matrix")){
       ndata <- nrow(data)
-    } else if (inherits(data, "retoMat")) {
+    } else if (inherits(data, "binmm")) {
       ndata <- data$dim$nrow
     } else {
       ndata <- 1
@@ -974,7 +974,7 @@ sdr <- function(formula,
     
     # Well, seems we need to extract the scaling factors
     # to de-standardize the coefficients here ...
-    if (inherits(data, "retoMat")) {
+    if (inherits(data, "binmm")) {
         x_mu <- data$scale$mean
         x_sd <- data$scale$sd
     }
@@ -1566,7 +1566,7 @@ sdr.gradboostfit <-
     eps <- rep(eps, length.out = maxit1)
     eps_int <- rep(eps_int, length.out = maxit1)
     
-    N  <- if (inherits(data, "retoMat")) data$dim$nrow else nrow(data)
+    N  <- if (inherits(data, "binmm")) data$dim$nrow else nrow(data)
     nx <- names(vardist)
 
     # If the user provided a list of ids for the batches: check
@@ -1691,7 +1691,7 @@ sdr.gradboostfit <-
           bids$current
       } else stop("Whoops, unknown oos_batch case; we should never end up here")
 
-      if (inherits(data, "retoMat")) {
+      if (inherits(data, "binmm")) {
         y.oos <- data[bids$oos, y]
         # draw batchwise from big.matrix and scale
         XX    <- data[bids$current, vars, standardize = scalex]
@@ -2068,7 +2068,7 @@ sdr.gradboostfit <-
     ## If oos_batch = 'next' is used this one should be the
     ## first one again (identical to bids$initial).
     
-    if (inherits(data, "retoMat")) {
+    if (inherits(data, "binmm")) {
         y.oos <- data[bids$oos, y]
         XX    <- data[bids$oos, vars, standardize = scalex]
     } else {
