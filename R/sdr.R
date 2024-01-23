@@ -838,10 +838,8 @@ sdr <- function(formula,
       } 
     } # End of !inherits(data, "binmm")
     
-    if (is.matrix(data) | inherits(data, "ffdf") | inherits(data, "big.matrix")){
+    if (is.matrix(data) | inherits(data, "ffdf") | inherits(data, "big.matrix") | inherits(data, "binmm")){
       ndata <- nrow(data)
-    } else if (inherits(data, "binmm")) {
-      ndata <- data$dim$nrow
     } else {
       ndata <- 1
     }
@@ -1566,7 +1564,7 @@ sdr.gradboostfit <-
     eps <- rep(eps, length.out = maxit1)
     eps_int <- rep(eps_int, length.out = maxit1)
     
-    N  <- if (inherits(data, "binmm")) data$dim$nrow else nrow(data)
+    N  <- nrow(data)
     nx <- names(vardist)
 
     # If the user provided a list of ids for the batches: check
