@@ -15,7 +15,7 @@ importFrom("stats", "AIC", "BIC", "as.formula", "coef", "cor", "density",
   "predict", "qnorm", "qqline", "qqnorm", "quantile", "rnorm",
   "runif", "sd", "terms", "setNames")
 
-importFrom("utils", "write.table")
+importFrom("utils", "write.table", "read.csv")
 
 export(
   "sdr",

@@ -84,12 +84,12 @@ read.binmm <- function(file, format = c("auto", "csv", "binary"),
     }
 
     # Out of range check
-    if (any(i < 0) | any(i > x$dim$nrow))
+    if (any(i <= 0) | any(i > x$dim$nrow))
         stop("index `i` out of range (must be within {1, ", x$dim$nrow, "}")
-    if (any(j < 0) | any(j > x$dim$ncol))
-        stop("index `i` out of range (must be within {1, ", x$dim$ncol, "}")
+    if (any(j <= 0) | any(j > x$dim$ncol))
+        stop("index `j` out of range (must be within {1, ", x$dim$ncol, "}")
 
-    # Calling cpp for getting the data
+    # Calling cpp for getting the data; indices in cpp zero-based (-1)
     res <- subset_binmm(x$binfile,
                         sort(unique(i)) - 1, sort(unique(j)) - 1,
                         standardize = standardize, verbose = verbose)
@@ -101,26 +101,27 @@ read.binmm <- function(file, format = c("auto", "csv", "binary"),
     } else if (length(i) == 1 & drop) {
         res <- setNames(as.vector(res), colnames(res))
     }
-    return(res)
 
+    return(res)
 }
 
+# S3 methods related to dimension
 dimnames.binmm <- function(x) list(NULL, x$colnames)
-
 dim.binmm <- function(x) c(x$dim$nrow, x$dim$ncol)
 nrow.binmm <- function(x) x$dim$nrow
 ncol.binmm <- function(x) x$dim$nrow
 
+# Head and tail
 head.binmm <- function(x, n = 6, standardize = FALSE, ...) {
     i <- seq_len(n)
     x[i[i <= x$dim$nrow], , standardize = standardize]
 }
-
 tail.binmm <- function(x, n = 6, standardize = FALSE, ...) {
     i <- rev(x$dim$nrow - seq_len(n) + 1)
     x[i[i >= 1], , standardize = standardize]
 }
 
+# Default print
 print.binmm <- function(x, n = 6, ...) {
     # Estimated size if fully loaded in MB, assuming
     # * 8 bytes for each value (double)
@@ -145,11 +146,14 @@ print.binmm <- function(x, n = 6, ...) {
     invisible(x)
 }
 
+# Brief summary
 summary.binmm <- function(object, ...) {
     data.frame(Class = class(object),
                nrow = object$dim$nrow,
                ncol = object$dim$ncol,
-               file = object$file)
+               bytes = object$bytes,
+               original_file = object$original_file,
+               binary_file = object$binfile)
 }
 
 
