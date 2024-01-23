@@ -10,41 +10,55 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
-// retoMat
-Rcpp::List retoMat(std::string file, int skip, bool header, char sep, bool verbose);
-RcppExport SEXP _sdr_retoMat(SEXP fileSEXP, SEXP skipSEXP, SEXP headerSEXP, SEXP sepSEXP, SEXP verboseSEXP) {
+// create_binmm
+Rcpp::List create_binmm(std::string file, std::string binfile, std::string type, int skip, bool header, char sep, bool verbose);
+RcppExport SEXP _sdr_create_binmm(SEXP fileSEXP, SEXP binfileSEXP, SEXP typeSEXP, SEXP skipSEXP, SEXP headerSEXP, SEXP sepSEXP, SEXP verboseSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< std::string >::type file(fileSEXP);
+    Rcpp::traits::input_parameter< std::string >::type binfile(binfileSEXP);
+    Rcpp::traits::input_parameter< std::string >::type type(typeSEXP);
     Rcpp::traits::input_parameter< int >::type skip(skipSEXP);
     Rcpp::traits::input_parameter< bool >::type header(headerSEXP);
     Rcpp::traits::input_parameter< char >::type sep(sepSEXP);
     Rcpp::traits::input_parameter< bool >::type verbose(verboseSEXP);
-    rcpp_result_gen = Rcpp::wrap(retoMat(file, skip, header, sep, verbose));
+    rcpp_result_gen = Rcpp::wrap(create_binmm(file, binfile, type, skip, header, sep, verbose));
     return rcpp_result_gen;
 END_RCPP
 }
-// retoMat_subset
-Rcpp::NumericMatrix retoMat_subset(const List& x, IntegerVector i, IntegerVector j, bool standardize, char sep, bool verbose);
-RcppExport SEXP _sdr_retoMat_subset(SEXP xSEXP, SEXP iSEXP, SEXP jSEXP, SEXP standardizeSEXP, SEXP sepSEXP, SEXP verboseSEXP) {
+// meta_binmm
+Rcpp::List meta_binmm(std::string file, bool verbose);
+RcppExport SEXP _sdr_meta_binmm(SEXP fileSEXP, SEXP verboseSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const List& >::type x(xSEXP);
-    Rcpp::traits::input_parameter< IntegerVector >::type i(iSEXP);
-    Rcpp::traits::input_parameter< IntegerVector >::type j(jSEXP);
-    Rcpp::traits::input_parameter< bool >::type standardize(standardizeSEXP);
-    Rcpp::traits::input_parameter< char >::type sep(sepSEXP);
+    Rcpp::traits::input_parameter< std::string >::type file(fileSEXP);
     Rcpp::traits::input_parameter< bool >::type verbose(verboseSEXP);
-    rcpp_result_gen = Rcpp::wrap(retoMat_subset(x, i, j, standardize, sep, verbose));
+    rcpp_result_gen = Rcpp::wrap(meta_binmm(file, verbose));
+    return rcpp_result_gen;
+END_RCPP
+}
+// subset_binmm
+Rcpp::NumericMatrix subset_binmm(std::string file, Rcpp::IntegerVector& ii, Rcpp::IntegerVector& jj, bool standardize, bool verbose);
+RcppExport SEXP _sdr_subset_binmm(SEXP fileSEXP, SEXP iiSEXP, SEXP jjSEXP, SEXP standardizeSEXP, SEXP verboseSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< std::string >::type file(fileSEXP);
+    Rcpp::traits::input_parameter< Rcpp::IntegerVector& >::type ii(iiSEXP);
+    Rcpp::traits::input_parameter< Rcpp::IntegerVector& >::type jj(jjSEXP);
+    Rcpp::traits::input_parameter< bool >::type standardize(standardizeSEXP);
+    Rcpp::traits::input_parameter< bool >::type verbose(verboseSEXP);
+    rcpp_result_gen = Rcpp::wrap(subset_binmm(file, ii, jj, standardize, verbose));
     return rcpp_result_gen;
 END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_sdr_retoMat", (DL_FUNC) &_sdr_retoMat, 5},
-    {"_sdr_retoMat_subset", (DL_FUNC) &_sdr_retoMat_subset, 6},
+    {"_sdr_create_binmm", (DL_FUNC) &_sdr_create_binmm, 7},
+    {"_sdr_meta_binmm", (DL_FUNC) &_sdr_meta_binmm, 2},
+    {"_sdr_subset_binmm", (DL_FUNC) &_sdr_subset_binmm, 5},
     {NULL, NULL, 0}
 };
 

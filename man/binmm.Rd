@@ -1,15 +1,18 @@
-\name{retoMat}
-\alias{retoMat}
-\alias{read.retoMat}
-\alias{dim.retoMat}
-\alias{head.retoMat}
-\alias{tail.retoMat}
-\alias{print.retoMat}
-\alias{summary.retoMat}
-\alias{[.retoMat}
+\name{binmm}
+\alias{binmm}
+\alias{read.binmm}
+\alias{dim.binmm}
+\alias{nrow.binmm}
+\alias{ncol.binmm}
+\alias{dimnames.binmm}
+\alias{head.binmm}
+\alias{tail.binmm}
+\alias{print.binmm}
+\alias{summary.binmm}
+\alias{[.binmm}
 
 \title{
-    Class for Handling Large Model Matrices stored as CSV
+    TODO(R) REDO MANUAL Class for Handling Large Model Matrices stored as CSV
 }
 
 \description{
@@ -18,7 +21,7 @@
     subset of the data set is used.
 
     Thus, we never have to store the whole data set in memory at any
-    given time. The \code{retoMat} class handles a connection to a CSV
+    given time. The \code{binmm} class handles a connection to a CSV
     file (see Details) containing (large) model matrices and to efficiently
     only read the segment of the data needed (C++).
 
@@ -29,23 +32,28 @@
 
 \usage{
 ## Reading file/open file connection
-read.retoMat(file, skip = 0, header = TRUE, sep = ",", verbose = FALSE)
+read.binmm(file, skip = 0, header = TRUE, sep = ",", verbose = FALSE)
 
 ## Dimension of the data set
-\method{dim}{retoMat}(x)
+\method{dim}{binmm}(x)
+\method{nrow}{binmm}(x)
+\method{ncol}{binmm}(x)
+
+## Dimension names (no row names, but contains all available column names)
+\method{dimnames}{binmm}(x)
 
 ## Return first/last few entries of the data set
-\method{head}{retoMat}(x, n = 6, standardize = FALSE, \dots)
-\method{tail}{retoMat}(x, n = 6, standardize = FALSE, \dots)
+\method{head}{binmm}(x, n = 6, standardize = FALSE, \dots)
+\method{tail}{binmm}(x, n = 6, standardize = FALSE, \dots)
 
 ## Default print method; shows some meta information and the first n rows of data
-\method{print}{retoMat}(x, n = 6, \dots)
+\method{print}{binmm}(x, n = 6, \dots)
 
 ## Very brief summary of the object; print is more informative
-\method{summary}{retoMat}(object, \dots)
+\method{summary}{binmm}(object, \dots)
 
 ## Subsetting; will read data on demand from file
-\method{[}{retoMat}(x, i, j, standardize = FALSE, drop = FALSE)
+\method{[}{binmm}(x, i, j, standardize = FALSE, drop = FALSE)
 }
 
 
@@ -70,7 +78,7 @@ read.retoMat(file, skip = 0, header = TRUE, sep = ",", verbose = FALSE)
   \item{j}{integer or character vector specifying which columns to read; can 
     be missing in which case all columns are returned.}
   \item{drop}{logical: if \code{TRUE} the dimensions will be dropped if possible.}
-  \item{object,x}{object of class \code{"retoMat"}.}
+  \item{object,x}{object of class \code{"binmm"}.}
 }
 
 \author{
@@ -96,16 +104,16 @@ read.retoMat(file, skip = 0, header = TRUE, sep = ",", verbose = FALSE)
     }
 
     The example section contains a few minimals. If the format is violated
-    the C++ code may throw an error when calling \code{\link{retoMat}}
+    the C++ code may throw an error when calling \code{\link{binmm}}
     on the first pass over the file.
 }
 
 \section{Standardization}{
-    When calling \code{\link{read.retoMat}} the data file is read once
+    When calling \code{\link{read.binmm}} the data file is read once
     sequentially (line by line) to identify its dimension. At the same time
     row-wise meas and standard deviation is calculated (entire data set).
 
-    This information is stored on the \code{retoMat} object (see \code{$scaling}).
+    This information is stored on the \code{binmm} object (see \code{$scaling}).
     When subsetting the object the data is returned in its original form by default
     (not standardized). However, if \code{standardize} is set \code{TRUE} the
     data will be returned standardized (\code{(x - mean(x)) / sd(x)}) on a row-by-row
@@ -113,7 +121,7 @@ read.retoMat(file, skip = 0, header = TRUE, sep = ",", verbose = FALSE)
 }
 
 \value{
-  An object of class \code{"retoMat"}. Contains the following information:
+  An object of class \code{"binmm"}. Contains the following information:
 
   \itemize{
       \item \code{file}: Name of the file containing the data.
@@ -141,13 +149,13 @@ head(d1, n = 3)
 write.csv(d1, file = tmpfile <- tempfile(fileext = ".csv"),
           row.names = FALSE)
 
-## Reading the data using reto.retoMat
+## Reading the data using reto.binmm
 ## Will call the C++ function which makes one full pass
 ## trought the file.
 ## Returns properties of the data set as well as row-wise
 ## means and standard deviation. However, no data is returned
 ## at this stage.
-rmat <- read.retoMat(tmpfile)
+rmat <- read.binmm(tmpfile)
 summary(rmat)
 dim(rmat)
 rmat$scale
@@ -189,7 +197,7 @@ mtcars <- transform(mtcars,
 head(mtcars, n = 2)
 
 ## Imagine being interested mpg (miles per gallon). Currently the
-## data set contains factor variables, tough retoMat requires
+## data set contains factor variables, tough binmm requires
 ## a numeric model matrix. We'll build it and save it to the file
 ## we started above.
 mf <- model.frame(mpg ~ ., data = mtcars)
@@ -202,8 +210,8 @@ write.table(mm, file = tmpfile, append = TRUE,
 ## File content ...
 cat(readLines(tmpfile, 8), sep = "\n")
 
-## Reading the data set with retoMat
-rmat2 <- read.retoMat(tmpfile, skip = 5, header = FALSE, sep = ";")
+## Reading the data set with binmm
+rmat2 <- read.binmm(tmpfile, skip = 5, header = FALSE, sep = ";")
 rmat2
 
 ## We have (by purpose) lost the column names

@@ -22,7 +22,7 @@ export(
   "alpha2cap2",
   "ma",
   "newformula",
-  "read.retoMat"
+  "read.binmm"
 )
 
 S3method("predict", "stagewise")
@@ -41,12 +41,15 @@ S3method("print", "summary.stagewise")
 # -------------------------------------
 useDynLib(sdr)
 importFrom(Rcpp, sourceCpp)
-S3method("dim",     "retoMat")
-S3method("head",    "retoMat")
-S3method("tail",    "retoMat")
-S3method("[",       "retoMat")
-S3method("print",   "retoMat")
-S3method("summary", "retoMat")
+S3method("dim",       "binmm")
+S3method("nrow",      "binmm")
+S3method("ncol",      "binmm")
+S3method("head",      "binmm")
+S3method("tail",      "binmm")
+S3method("[",         "binmm")
+S3method("print",     "binmm")
+S3method("summary",   "binmm")
+S3method("dimnames",  "binmm")
 
 
 
