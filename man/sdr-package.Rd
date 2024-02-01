@@ -60,7 +60,7 @@ Rigby, R.A. and Stasinopoulos, D.M. (2005)
 }
 
 \examples{
-\dontrun{
+\donttest{
 set.seed(123)
 
 ## Draw 100 uniform distributed variables.

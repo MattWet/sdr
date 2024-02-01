@@ -52,7 +52,7 @@
   \code{\link{sdr}}.
 }
 
-\examples{\dontrun{ 
+\examples{\donttest{ 
 set.seed(123)
 
 ## Draw 100 uniform distributed variables.

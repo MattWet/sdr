@@ -17,39 +17,20 @@ importFrom("stats", "AIC", "BIC", "as.formula", "coef", "cor", "density",
 
 importFrom("utils", "write.table", "read.csv")
 
-export(
-  "sdr",
-  "alpha2cap2",
-  "ma",
-  "newformula",
-  "read.binmm"
-)
+export("sdr", "alpha2cap2", "ma", "newformula")
 
-S3method("predict", "stagewise")
+S3method("predict",   "stagewise")
 S3method("residuals", "stagewise")
-S3method("logLik", "stagewise")
-S3method("summary", "stagewise")
-S3method("AIC", "stagewise")
-S3method("BIC", "stagewise")
-S3method("coef", "stagewise")
+S3method("logLik",    "stagewise")
+S3method("summary",   "stagewise")
+S3method("AIC",       "stagewise")
+S3method("BIC",       "stagewise")
+S3method("coef",      "stagewise")
+S3method("plot",      "stagewise")
 
-S3method("plot", "stagewise_residuals")
-S3method("plot", "stagewise")
+S3method("plot",      "stagewise_residuals")
 
-S3method("print", "summary.stagewise")
-
-# -------------------------------------
-useDynLib(sdr)
-importFrom(Rcpp, sourceCpp)
-S3method("dim",       "binmm")
-S3method("nrow",      "binmm")
-S3method("ncol",      "binmm")
-S3method("head",      "binmm")
-S3method("tail",      "binmm")
-S3method("[",         "binmm")
-S3method("print",     "binmm")
-S3method("summary",   "binmm")
-S3method("dimnames",  "binmm")
+S3method("print",     "summary.stagewise")
 
 
 
