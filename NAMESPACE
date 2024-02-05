@@ -13,27 +13,24 @@ importFrom("stats", "AIC", "BIC", "as.formula", "coef", "cor", "density",
   "dnorm", "filter", "logLik", "lowess", "make.link",
   "model.frame", "model.matrix", "na.omit", "pnorm",
   "predict", "qnorm", "qqline", "qqnorm", "quantile", "rnorm",
-  "runif", "sd", "terms")
+  "runif", "sd", "terms", "setNames")
 
-importFrom("utils", "write.table")
+importFrom("utils", "write.table", "read.csv")
 
-export(
-  "sdr",
-  "alpha2cap2",
-  "ma",
-  "newformula"
-)
+export("sdr", "alpha2cap2", "ma", "newformula")
 
-S3method("predict", "stagewise")
+S3method("predict",   "stagewise")
 S3method("residuals", "stagewise")
-S3method("logLik", "stagewise")
-S3method("summary", "stagewise")
-S3method("AIC", "stagewise")
-S3method("BIC", "stagewise")
-S3method("coef", "stagewise")
+S3method("logLik",    "stagewise")
+S3method("summary",   "stagewise")
+S3method("AIC",       "stagewise")
+S3method("BIC",       "stagewise")
+S3method("coef",      "stagewise")
+S3method("plot",      "stagewise")
 
-S3method("plot", "stagewise_residuals")
-S3method("plot", "stagewise")
+S3method("plot",      "stagewise_residuals")
 
-S3method("print", "summary.stagewise")
+S3method("print",     "summary.stagewise")
+
+
 

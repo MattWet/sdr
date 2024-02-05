@@ -1,8 +1,8 @@
 Package: sdr
 Type: Package
 Title: Stagewise Distributional Regression
-Version: 1.0
-Date: 2023-04-17
+Version: 1.0.1
+Date: 2024-02-01
 Authors@R: c(person(given = "Mattias", family = "Wetscher", role = c("aut", "cre"), email = "Mattias.Wetscher@uibk.ac.at",
                comment = c(ORCID = "0000-0002-9982-3001")),
              person(given = "Nikolaus", family = "Umlauf", role = "aut", email = "Nikolaus.Umlauf@uibk.ac.at",
@@ -10,7 +10,7 @@ Authors@R: c(person(given = "Mattias", family = "Wetscher", role = c("aut", "cre
 Description: The implementation provides infrastructure for the estimation of distributional
   regression models using efficient stagewise algorithms.
 Depends: R (>= 3.5.0), gamlss.dist, Formula, Matrix
-Suggests: colorspace, knitr, scoringRules, parallel, ff, bigmemory
+Suggests: colorspace, knitr, scoringRules, parallel, ff, bigmemory, rmarkdown, tinytest
 License: GPL-2 | GPL-3
 LazyLoad: yes
-RoxygenNote: 7.0.2
+VignetteBuilder: knitr

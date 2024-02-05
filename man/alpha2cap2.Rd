@@ -29,7 +29,7 @@ alpha2cap2(alpha = 0.01, nnobs = NULL,
 }
 
 \examples{
-\dontrun{
+\donttest{
 set.seed(123)
 
 ## Draw 100 uniform distributed variables.
