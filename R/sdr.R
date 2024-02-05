@@ -877,6 +877,18 @@ sdr <- function(formula,
     # If outfile was created, delete it
     if (exists("outfile") && file.exists(outfile)) unlink(outfile)
 
+  # Delete formula environment or else function environment gets copied 
+  # into fomula at end of function
+  for(x in 1:length(mfd$formula)){
+    environment(mfd$formula[[x]]) <- emptyenv()
+  }
+  
+  # Adding class to mfd and return
+  class(mfd) <- "stagewise"
+  
+  return(mfd)
+}
+                        
     # Adding class to mfd and return
     class(mfd) <- "stagewise"
     return(mfd)
