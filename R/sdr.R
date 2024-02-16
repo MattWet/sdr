@@ -2872,8 +2872,8 @@ coef.stagewise <- function(object,
     for (j in model)
       coef[[j]] <- apply(object$coefficients[[j]][if (is.null(mstop)) keep:maxit
                                                   else mstart:mstop, , drop = FALSE], 2, mean)
-    if (length(coef) < 2L)
-      coef <- coef[[1L]]
+    #if (length(coef) < 2L)
+    #  coef <- coef[[1L]]
 
     return(coef)
   }
