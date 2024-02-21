@@ -2783,23 +2783,26 @@ model.matrix.stagewise <- function(object, ...) {
 
 
 ## Predict method.
-predict.stagewise <- function(object,
-                              newdata = NULL,
-                              type = c("link", "parameter"),
-                              drop = TRUE,
-                              mstart = NULL,
-                              mstop = NULL,
-                              model = NULL,
-                              ...) {
+predict.stagewise <-
+  function(object,
+           newdata = NULL,
+           type = c("link", "parameter"),
+           drop = TRUE,
+           mstart = NULL,
+           mstop = NULL,
+           iterations = NULL,
+           model = NULL,
+           what = c("mean", "matrix"),
+           ...) {
     
     # Needed for sdr.treshdesc variant
-    if (is.null(mstop) & "iter" %in% names(object))  mstop  <- object$iter
-    if (is.null(mstart) & "iter" %in% names(object)) mstart <- object$iter
+    if(is.null(mstop) & "iter" %in% names(object) ) mstop = object$iter
+    if(is.null(mstart) & "iter" %in% names(object) ) mstart = object$iter
     
     if(is.null(newdata)) newdata <- object$X
     # All variables that are needed
     vars <- unique(unlist(object$varnames))
-    if (!length(vars) > 0) {
+    if(!length(vars) > 0){
       X <- model.matrix(object = ~ 1, data = data.frame(newdata))
     } else {
       formula_all <- as.formula(paste(" ~ ", paste0(vars, collapse = "+")))
@@ -2811,31 +2814,63 @@ predict.stagewise <- function(object,
         stop("Argument mstop must be a single number!")
     }
     maxit <- nrow(object$coefficients[[1]])
-    if (is.null(mstop))  mstop  <- maxit
-    if (is.null(mstart)) mstart <- mstop
-    if (is.null(model))  model  <- names(object$formula)
+    if (is.null(mstop))
+      mstop <- maxit
+    if (is.null(mstart))
+      mstart <- mstop
+    if (is.null(model))
+      model <- names(object$formula)
     if (is.character(model)) {
       model <- match.arg(model, names(object$formula), several.ok = TRUE)
     }
-    if (is.null(type))     type <- "link"
-    if (length(type) > 1)  type <- type[1]
+    if (is.null(type))
+      type <- "link"
+    if (length(type) > 1)
+      type <- type[1]
+    if (is.null(what))
+      what <- "mean"
+    if (length(what) > 1)
+      what <- what[1]
+    if(is.null(iterations))
+      iterations <- mstart:mstop
     
     eta <- list()
     
-    for (j in model) {
-      eta[[j]]   <- 0
-      iterations <- mstart:mstop
-      for (i in iterations) {
-        eta[[j]] <- eta[[j]] + drop(as.matrix(X[, colnames(object$coefficients[[j]])]) %*% object$coefficients[[j]][i, ])
+    if(what == "mean"){
+      for (j in model) {
+        eta[[j]] <- 0
+        
+        for (i in iterations) {
+          eta[[j]] <- eta[[j]] + drop(as.matrix(X[,colnames(object$coefficients[[j]])]) %*% object$coefficients[[j]][i, ])
+        }
+        eta[[j]] <- eta[[j]] / (mstop - mstart + 1)
+        if (type != "link") {
+          linkinv <- make.link2(object$family$links[j])$linkinv
+          eta[[j]] <- linkinv(eta[[j]])
+        }
       }
-      eta[[j]] <- eta[[j]] / (mstop - mstart + 1)
-      if (type != "link") {
-        linkinv  <- make.link2(object$family$links[j])$linkinv
-        eta[[j]] <- linkinv(eta[[j]])
+      if ((length(eta) < 2L) & drop)
+        eta <- eta[[1L]]
+    } else if(what == "matrix") {
+      
+      for (j in model) {
+        eta[[j]] <- matrix(0, nrow = nrow(X), ncol = length(iterations))
+        
+        for (i in 1:length(iterations)) {
+          eta[[j]][,i] <- drop(as.matrix(X[,colnames(object$coefficients[[j]])]) %*% object$coefficients[[j]][iterations[i], ])
+          #str(eta[[j]][,i])
+          if (type != "link") {
+            linkinv <- make.link2(object$family$links[j])$linkinv
+            eta[[j]][,i] <- linkinv(eta[[j]][,i])
+          }
+        }
+        
       }
+      # if ((length(eta) < 2L) & drop)
+      #   eta <- eta[[1L]]
+    } else {
+      stop("what must be either mean or matrix!")
     }
-    if ((length(eta) < 2L) & drop)
-      eta <- eta[[1L]]
     
     return(eta)
   }
