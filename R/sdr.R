@@ -888,11 +888,6 @@ sdr <- function(formula,
   
   return(mfd)
 }
-                        
-    # Adding class to mfd and return
-    class(mfd) <- "stagewise"
-    return(mfd)
-  }
 
 
 
@@ -1428,531 +1423,536 @@ sdr.gradboostfit <- function(data,
                              y = NULL,
                              vars = NULL,
                              ...) {
-
-    ia <- interactive()
-    if(!refitting) maxit_refit <- 0
-    
-    # scaling is done on each respective batch separately
-    myscale <- function(x, x_mu, x_sd) {
-      for (n in colnames(x)) x[, n] <- (x[, n] - x_mu[[n]]) / x_sd[[n]]
-      return(x)
+  
+  ia <- interactive()
+  if(!refitting) maxit_refit <- 0
+  
+  # scaling is done on each respective batch separately
+  myscale <- function(x, x_mu, x_sd) {
+    for (n in colnames(x)) x[, n] <- (x[, n] - x_mu[[n]]) / x_sd[[n]]
+    return(x)
+  }
+  
+  maxit1 <- maxit + maxit_refit
+  cap <- c(rep(cap, length.out = maxit), rep(0,length.out = maxit_refit))
+  eps <- rep(eps, length.out = maxit1)
+  eps_int <- rep(eps_int, length.out = maxit1)
+  
+  N  <- nrow(data)
+  nx <- names(vardist)
+  
+  # If the user provided a list of ids for the batches: check
+  # if that matches the number of requested iterations + refitting.
+  # Throw warning if not.
+  
+  if (is.list(batch_ids) && length(batch_ids) != maxit1) {
+    warning("Length of batch_ids != maxit + maxit_refit; using length of batch_ids provided for setting maxit + maxit_refit!")
+    maxit1 <- length(batch_ids)
+  }
+  
+  # Draw initial set of batch IDs; `bids` (batch ids) will
+  # be extended during iteration to keep track of ids.
+  bids <- list(initial = get_batch_ids(batch_ids, i = 1, N = N))
+  
+  # TODO(R): Why "plots" and what do we actually do here?
+  # number of plots
+  ##ORIG#   tw <- length(strsplit(as.character(maxit1), "")[[1]]) + 1L
+  tw <- nchar(as.character(maxit1)) + 1
+  if (!exists("b.size")) b.size <- length(bids$initial)
+  
+  # K is penalty for IC
+  if (is.null(K)) K <- log(b.size)
+  
+  ic.oos.list <- ic0.list <- ll.list <- ll0.list <- NULL
+  ll.oos.afterint.list <- 0
+  beta <- list()
+  intvar <- list()
+  for (j in nx) {
+    if(length(vardist[[j]]) == 0){
+      intvar[[j]] <- "(Intercept)"
+      ncolu <- 1
+    } else {
+      intvar[[j]] <- c("(Intercept)",vardist[[j]])
+      ncolu <- length(intvar[[j]])
     }
-    
-    maxit1 <- maxit + maxit_refit
-    cap <- c(rep(cap, length.out = maxit), rep(0,length.out = maxit_refit))
-    eps <- rep(eps, length.out = maxit1)
-    eps_int <- rep(eps_int, length.out = maxit1)
-    
-    N  <- nrow(data)
-    nx <- names(vardist)
-
-    # If the user provided a list of ids for the batches: check
-    # if that matches the number of requested iterations + refitting.
-    # Throw warning if not.
-
-    if (is.list(batch_ids) && length(batch_ids) != maxit1) {
-      warning("Length of batch_ids != maxit + maxit_refit; using length of batch_ids provided for setting maxit + maxit_refit!")
-      maxit1 <- length(batch_ids)
-    }
-
-    # Draw initial set of batch IDs; `bids` (batch ids) will
-    # be extended during iteration to keep track of ids.
-    bids <- list(initial = get_batch_ids(batch_ids, i = 1, N = N))
-
-    # TODO(R): Why "plots" and what do we actually do here?
-    # number of plots
-    ##ORIG#   tw <- length(strsplit(as.character(maxit1), "")[[1]]) + 1L
-    tw <- nchar(as.character(maxit1)) + 1
-    if (!exists("b.size")) b.size <- length(bids$initial)
-
-    # K is penalty for IC
-    if (is.null(K)) K <- log(b.size)
-    
-    ic.oos.list <- ic0.list <- ll.list <- ll0.list <- NULL
-    beta <- list()
-    intvar <- list()
+    beta[[j]] <- matrix(0, nrow = maxit1, ncol = ncolu)
+    colnames(beta[[j]]) <- intvar[[j]]
+  }
+  if (!is.null(coef_start)) {
+    initialize <- FALSE
     for (j in nx) {
-      if(length(vardist[[j]]) == 0){
-        intvar[[j]] <- "(Intercept)"
-        ncolu <- 1
-      } else {
-        intvar[[j]] <- c("(Intercept)",vardist[[j]])
-        ncolu <- length(intvar[[j]])
-      }
-      beta[[j]] <- matrix(0, nrow = maxit1, ncol = ncolu)
-      colnames(beta[[j]]) <- intvar[[j]]
+      beta[[j]][1, ] <- coef_start[[j]]
     }
-    if (!is.null(coef_start)) {
-      initialize <- FALSE
+  }
+  
+  #beta.grad <- beta
+  powerset.list <- powerset(nx)[-1]
+  if (!is.null(length_ps))
+    powerset.list <-
+    powerset.list[sapply(powerset.list, length) == length_ps]
+  
+  if (initialize) {
+    if (!is.null(family$initialize)) {
+      betai <- list()
       for (j in nx) {
-        beta[[j]][1, ] <- coef_start[[j]]
-      }
-    }
-    
-    #beta.grad <- beta
-    powerset.list <- powerset(nx)[-1]
-    if (!is.null(length_ps))
-      powerset.list <-
-      powerset.list[sapply(powerset.list, length) == length_ps]
-    
-    if (initialize) {
-      if (!is.null(family$initialize)) {
-        betai <- list()
-        for (j in nx) {
-          if (!is.null(family$initialize[[j]])) {
-            linkfun <- make.link2(family$links[j])$linkfun
-            beta[[j]][1L, "(Intercept)"] <-
-              mean(linkfun(family$initialize[[j]](data[bids$initial, y])), na.rm = TRUE)
-          }
+        if (!is.null(family$initialize[[j]])) {
+          linkfun <- make.link2(family$links[j])$linkfun
+          beta[[j]][1L, "(Intercept)"] <-
+            mean(linkfun(family$initialize[[j]](data[bids$initial, y])), na.rm = TRUE)
         }
       }
     }
-
-    # Calculating degrees of freedom ...
-    df <- sum(sapply(beta, function(b) { sum(b[1, ] != 0) }))
-
-    err01 <- .Machine$double.eps^(1 / 2)
-    err02 <- err01 * 2 * length(bids$initial)
-    # err02 is the denominator for central numeric differentiation.  b.size makes
-    # gradient magnitute for different sample sizes comparable this translates
-    # maximum log likelihood to maximum average loglikelihood
-    # https://stats.stackexchange.com/questions/267847/motivation-for-average-log-likelihood
+  }
+  
+  # Calculating degrees of freedom ...
+  df <- sum(sapply(beta, function(b) { sum(b[1, ] != 0) }))
+  
+  err01 <- .Machine$double.eps^(1 / 2)
+  err02 <- err01 * 2 * length(bids$initial)
+  # err02 is the denominator for central numeric differentiation.  b.size makes
+  # gradient magnitute for different sample sizes comparable this translates
+  # maximum log likelihood to maximum average loglikelihood
+  # https://stats.stackexchange.com/questions/267847/motivation-for-average-log-likelihood
+  
+  ma <- function(x, order = 20) {
+    ma1 <- filter(x, rep(1 / order, order), sides = 1)
+    ma2 <- rev(filter(rev(x), rep(1 / order, order), sides = 1))
+    return(ifelse(is.na(ma1), ma2, ma1))
+  }
+  
+  # If oos_batch is 'next' we would like to use the next batch for
+  # validation. Thus we need to keep two sets of batch IDs and store
+  # the batch ids of the current ($current) as well as the next ($next)
+  # iteration into our `bids` list.
+  #
+  # After each iteration $current is overwritten with $next and a new
+  # the new batch IDs for the $next iteration are added.
+  # When reaching maxit1, $next will be set to $initial (first batch).
+  bids$current = bids$initial # Set current to batch 1,
+  bids$`next`  = get_batch_ids(batch_ids, i = 2, N = N) # next to batch 2
+  
+  # Iterating; looping 2:maxit1
+  for (i in 2:maxit1) {
     
-    ma <- function(x, order = 20) {
-      ma1 <- filter(x, rep(1 / order, order), sides = 1)
-      ma2 <- rev(filter(rev(x), rep(1 / order, order), sides = 1))
-      return(ifelse(is.na(ma1), ma2, ma1))
+    # Update batch ids; write next -> current and draw
+    # a new next (initial if i == maxit, else i + 1).
+    bids$current <- bids$`next`
+    bids$`next`  <- if (i == maxit1) bids$initial else get_batch_ids(batch_ids, i = i + 1, N = N)
+    
+    # deselect non selected variables for updating if maxit_refit > 0
+    if (i == maxit +1) {
+      for(j in nx){
+        cond <- beta[[j]][maxit,] != 0
+        cond["(Intercept)"] <- TRUE
+        intvar[[j]]  <- intvar[[j]][cond]
+        vardist[[j]] <- vardist[[j]][cond[-1]]
+      }
     }
-
-    # If oos_batch is 'next' we would like to use the next batch for
-    # validation. Thus we need to keep two sets of batch IDs and store
-    # the batch ids of the current ($current) as well as the next ($next)
-    # iteration into our `bids` list.
-    #
-    # After each iteration $current is overwritten with $next and a new
-    # the new batch IDs for the $next iteration are added.
-    # When reaching maxit1, $next will be set to $initial (first batch).
-    bids$current = bids$initial # Set current to batch 1,
-    bids$`next`  = get_batch_ids(batch_ids, i = 2, N = N) # next to batch 2
     
-    # Iterating; looping 2:maxit1
-    for (i in 2:maxit1) {
-
-      # Update batch ids; write next -> current and draw
-      # a new next (initial if i == maxit, else i + 1).
-      bids$current <- bids$`next`
-      bids$`next`  <- if (i == maxit1) bids$initial else get_batch_ids(batch_ids, i = i + 1, N = N)
-
-      # deselect non selected variables for updating if maxit_refit > 0
-      if (i == maxit +1) {
-        for(j in nx){
-          cond <- beta[[j]][maxit,] != 0
-          cond["(Intercept)"] <- TRUE
-          intvar[[j]]  <- intvar[[j]][cond]
-          vardist[[j]] <- vardist[[j]][cond[-1]]
-        }
-      }
-      
-      eta.oos <- eta <- val <- absval <- sgn <- list()
-      
-      ## Extract response.
-      yi <- as.matrix(data[bids$current, y])
-      
-      # Draw batch IDs for out of sample batch
-      # Overwrite $oos in the bids list.
-      bids$oos <- if (oos_batch == "next") {
-          bids$`next`
-      } else if (oos_batch == "random") {
-          get_batch_ids(batch_ids, i = sample(maxit1, 1), N = N)
-      } else if (oos_batch == "same") {
-          bids$current
-      } else stop("Whoops, unknown oos_batch case; we should never end up here")
-
-      y.oos <- as.matrix(data[bids$oos, y])
-      # draw batchwise from big.matrix and scale
-      XX    <- as.matrix(data[bids$current, vars])
-      XXoos <- as.matrix(data[bids$oos, vars])
-      if (scalex){
-        XX <- myscale(XX, x_mu = x_mu, x_sd = x_sd)
-        XXoos <- myscale(XXoos, x_mu = x_mu, x_sd = x_sd)
-      }
-      X <- Xoos <- list()
-
-      for (j in nx) {
-        ## Save last iteration.
-        beta[[j]][i, ] <- beta[[j]][i - 1L, ]
-        if(ncol(XX) == 1){
-          if(ncol(beta[[j]]) == 1 ){
-            X[[j]] <- cbind( "(Intercept)" = rep(1,b.size))
-            Xoos[[j]] <- cbind( "(Intercept)" = rep(1,b.size))
-          } else {
-            X[[j]] <- cbind( "(Intercept)" = rep(1,b.size), XX)
-            Xoos[[j]] <- cbind( "(Intercept)" = rep(1,b.size),XXoos)
-          }
-          colnames(Xoos[[j]]) <- colnames(X[[j]]) <- colnames(beta[[j]]) 
-        } else {
-          X[[j]] <- cbind( "(Intercept)" = rep(1,b.size), XX[,setdiff(colnames(beta[[j]]), "(Intercept)" )])
-          Xoos[[j]] <- cbind( "(Intercept)" = rep(1,b.size),XXoos[,setdiff(colnames(beta[[j]]), "(Intercept)" )])
-          colnames(Xoos[[j]]) <- colnames(X[[j]]) <- c("(Intercept)", setdiff(colnames(beta[[j]]), "(Intercept)" ))
-        }
-        ## Setup linear predictor.
-        eta[[j]] <-
-          drop(X[[j]] %*% beta[[j]][i, ])
-        
-        ## out of sample
-        eta.oos[[j]] <-
-          drop(Xoos[[j]] %*% beta[[j]][i, ])
-      }
-
-      
-      # out of sample
-      ll.oos <- family$loglik(y.oos, family$map2par(eta.oos))
-      
-      ## Compute log-likelihood.
-      df <- sum(sapply(beta, function(b) {
-        sum(b[i, ] != 0)
-      }))
-      ll0 <- family$loglik(yi, family$map2par(eta))
-      ic0 <- -2 * ll0 + K * df
-      ic.oos <- -2 * ll.oos + K * df
-      
-      ll0.list <- c(ll0.list, ll0)
-      ic0.list <- c(ic0.list, ic0)
-      ic.oos.list <- c(ic.oos.list, ic.oos)
-      
-      
-      bb = 20
-      if (plot & (i %% 10 == 0)) {
-        if (i > bb + 4) {
-          bic.min <- which.min(ma(ic0.list, order = bb))
-          if (bic.min < bb + 1)
-            bic.min <- bic.min + bb
-        }
-        par(mfrow = n2mfrow(length(nx) + 2))
-        plot(y = ic.oos.list, x = 2:i, xlab = "Iteration", ylab = "BIC")
-
-        if (i > bb + 4) {
-          abline(v = bic.min)
-          abline(v = bic.min - bb)
-        }
-        if (i > 5) {
-          fit2 <- lowess(y = ic.oos.list, x = 2:i)
-          lines(fit2)
-        }
-        plot( y = ll0.list, x = 2:i, xlab = "Iteration", ylab = "logLik")
-
-        if (i > bb + 4) {
-          abline(v = bic.min)
-          abline(v = bic.min - bb)
-        }
-        if (i > 5) {
-          fit2 <- lowess(y = ll0.list, x = 2:i)
-          lines(fit2)
-        }
-        for (j in nx) {
-          matplot(beta[[j]][1:i, ], type = "l", lty = 1, main = j, xlab = "Iteration", ylab = "Coefficients")
-
-          if (i > bb + 4) {
-            abline(v = bic.min)
-            abline(v = bic.min - bb)
-          }
-        }
-      }
-      
-      
-      
-      sign.list <- rep(-Inf, length(nx))
-      names(sign.list) <- nx
-      
-      for (j in nx) {
-        eta0 <- eta
-        ## Get coefficients and setup.
-        tbeta <- beta[[j]][i, ]
-        ## Positive.
-        tbeta[1] <- tbeta[1] + err01
-        eta[[j]] <- drop(X[[j]] %*% tbeta)
-        ll1      <- family$loglik(yi, family$map2par(eta))
-        
-        ## Negative
-        tbeta[1] <- tbeta[1] - 2 * err01
-        eta[[j]] <- drop(X[[j]] %*% tbeta)
-        ll2      <- family$loglik(yi, family$map2par(eta))
-        
-        grad <- (ll1 - ll2) / err02
-        sign.list[[j]] <- grad
-      }
-      
-      pset <- powerset.list
-      for (j in nx) {
-        if (sign.list[[j]] == -Inf) {
-          ok <- !grepl(j, pset)
-          pset <- pset[ok]
-        }
-      }
-      
-      if (length(pset) != 0) {
-        beta.final <- list()
-        for (j in nx)
-          beta.final[[j]] <- beta[[j]][i, ]
-        ic.oos.old <- ic.oos
-        
-        beta.wip <- list()
-        for (j in nx)
-          beta.wip[[j]] <- beta[[j]][i, ]
-
-        for (l in 1:length(pset)) {
-          # ps <- !is.na(pset[l,])
-          sign.list2 <- sign.list[pset[[l]]]
-          gnorm <- sqrt(sum(sign.list2 ^ 2))
-          
-          if (gnorm > eps_int[i]) {
-            sign.list2 <- eps_int[i] * sign.list2 / gnorm
-          }
-          for (ij in pset[[l]]) {
-            sign.list2[ij] <- ifelse(
-              i < 0.8 * maxit1 & abs(sign.list2[ij]) <
-                nu_int * eps_int[i],
-              sign(sign.list2[ij]) * nu_int * eps_int[i],
-              sign.list2[ij]
-            )
-          }
-          
-          for (j in pset[[l]]) {
-            grad <- sign.list2[[j]]
-            beta[[j]][i, 1] <- beta[[j]][i, 1] + grad
-            
-            eta[[j]] <- drop(X[[j]] %*% beta[[j]][i, ])
-          }
-          
-          df <- sum(sapply(beta, function(b) {
-            sum(b[i, ] != 0)
-          }))
-          ##df <- sum(data.frame(beta)[i, ] != 0)
-          
-          ## keep update only if oos information crit improves
-          for (j in nx)
-            eta.oos[[j]] <- drop(Xoos[[j]] %*% beta[[j]][i, ])
-
-          ll.oos <- family$loglik(y.oos, family$map2par(eta.oos))
-          ic.oos.new <- -2 * ll.oos + K * df
-          if (ic.oos.new < ic.oos.old) {
-            # keep current try
-            for (j in nx)
-              beta.final[[j]] <- beta[[j]][i, ]
-            ps.final <- pset[[l]]
-            ic.oos.old <- ic.oos.new
-          }
-          for (j in pset[[l]])
-            beta[[j]][i, ] <- beta.wip[[j]]
-          
-        }  # this bracket is for pset
-        
-        # save best beta
-        for (j in nx)
-          beta[[j]][i, ] <- beta.final[[j]]
-        
-      }
-      
-      eta0 <- eta
-      sign.list <- pos.list <- rep(-Inf, length(nx))
-      names(sign.list) <- names(pos.list) <- nx
-      
-      for (j in nx) {
-        ## Get coefficients and setup.
-        tbeta <- beta[[j]][i, ]
-        nc <- length(intvar[[j]]) - 1
-        
-        if (nc > 0) {
-          eta[[j]] <- eta[[j]] + err01
-          ll1 <- family$d(yi, family$map2par(eta), log = TRUE)
-          
-          ## Negative
-          eta[[j]] <- eta[[j]] - 2 * err01
-          ll2 <- family$d(yi, family$map2par(eta), log = TRUE)
-          # if(T ) print(ll2)
-          
-          grad <- (ll1 - ll2) / (2 * err01)
-          # print(mean(grad))
-          eta[[j]] <- eta[[j]] + err01
-          
-          cc <- try(cor(grad, X[[j]][, vardist[[j]], drop = FALSE]), FALSE)
-
-          #[,-1]))
-          cc[is.na(cc)] <- 0
-          if (is.numeric(cc)) {
-            ## Select update
-            jj <- which.max(abs(cc)) + 1
-          } else {
-            jj <- 1
-          }  # interecept if cor gives error
-          
-          eta0  <- eta
-          ## Get coefficients and setup.
-          tbeta <- beta[[j]][i, ]
-          
-          if (max(abs(cc)) < cap[i]) {
-            grad <- 0
-          } else {
-            # average partial derivative with respect to best variable
-            grad <- t(grad) %*% X[[j]][,intvar[[j]][jj] , drop = FALSE]/ b.size 
-            # ## Positive.
-            # tbeta[jj] <- tbeta[jj] + err01
-            # eta[[j]] <-
-            #   drop(X[batch_ids[[i]],intvar[[j]] , drop = FALSE] %*% tbeta)
-            # ll1 <- family$loglik(yi, family$map2par(eta))
-            # 
-            # ## Negative
-            # tbeta[jj] <- tbeta[jj] - 2 * err01
-            # eta[[j]] <-
-            #   drop(X[batch_ids[[i]],intvar[[j]] , drop = FALSE] %*% tbeta)
-            # ll2 <- family$loglik(yi, family$map2par(eta))
-            # 
-            # grad <- (ll1 - ll2) / err02
-          }
-          
-          sign.list[[j]] <- grad
-          pos.list[[j]]  <- jj # position in intvar
-          
-        }
-        
-      }
-
-      # Max number of characters in case all parameters are set;
-      # used for formatting cat() output if verbose = TRUE
-      pset_fmt <- paste0("%-", max(sapply(pset, function(x) nchar(paste(x, collapse = ", ")))), "s")
-      
-      ps.final <- "no par"
-      for (j in nx) {
-        if (sign.list[[j]] == 0 | sign.list[[j]] == -Inf) {
-          ok   <- !grepl(j, pset)
-          pset <- pset[ok]
-        }
-      }
-      
-      if (length(pset) == 0) {
-        # for (j in nx) beta[[j]][i, ] <- beta[[j]][i - 1, ]
-      } else {
-        ## beta.final <- list()
-        for (j in nx)
-          beta.final[[j]] <- beta[[j]][i, ]
-        ic.oos.old <- ic.oos
-        
-        beta.wip <- list()
-        for (j in nx)
-          beta.wip[[j]] <- beta[[j]][i, ]
-        for (l in 1:length(pset)) {
-          # ps <- !is.na(pset[l,])
-          sign.list2 <- sign.list[pset[[l]]]
-          gnorm      <- sqrt(sum(sign.list2 ^ 2))
-          
-          if (gnorm > eps[i]) {
-            sign.list2 <- eps[i] * sign.list2 / gnorm
-          }
-          for (ij in pset[[l]]) {
-            sign.list2[ij] <- ifelse(i < 0.8 * maxit1 & abs(sign.list2[ij]) < nu * eps[i],
-                                     sign(sign.list2[ij]) * nu * eps[i],
-                                     sign.list2[ij])
-          }
-          
-          for (j in pset[[l]]) {
-            jj   <- pos.list[[j]]
-            grad <- sign.list2[[j]]
-            
-            beta[[j]][i, intvar[[j]][jj]] <- beta[[j]][i, intvar[[j]][jj]] + grad
-            
-            eta[[j]] <- drop(X[[j]] %*% beta[[j]][i, ])
-          }
-          
-          ## df <- sum(data.frame(beta)[i, ] != 0)
-          df <- sum(sapply(beta, function(b) {
-            sum(b[i, ] != 0)
-          }))
-          
-          ## keep update only if oos information crit improves
-          for (j in nx)
-            eta.oos[[j]] <- drop(Xoos[[j]] %*% beta[[j]][i, ])
-
-          ll.oos <- family$loglik(y.oos, family$map2par(eta.oos))
-          ic.oos.new <- -2 * ll.oos + K * df
-          if (ic.oos.new < ic.oos.old) {
-            # keep current try
-            for (j in nx)
-              beta.final[[j]] <- beta[[j]][i, ]
-
-            ps.final <- pset[[l]]
-            ic.oos.old <- ic.oos.new
-          }
-          for (j in pset[[l]])
-            beta[[j]][i, ] <- beta.wip[[j]]
-          
-        }  # this bracket is for pset
-        
-        # save best beta
-        for (j in nx)
-          beta[[j]][i, ] <- beta.final[[j]]
-        
-      }
-      
-      if (verbose) {
-        if (ia) cat("\r")
-        cat(
-          "iter = ",     formatC(i, width = tw, flag = " "),
-          ", logLik = ", formatC(round(ll0, 4L), width = tw, flag = " "),
-          ", df = ",     formatC(df, width = tw, flag = " "),
-          ", ",          sprintf(pset_fmt, paste(ps.final, collapse = ", ")),
-          if (!ia) "\n" else NULL,
-          sep = ""
-        )
-      }
-
-    } # End of loop over 2:maxit1
+    eta.oos <- eta <- val <- absval <- sgn <- list()
     
+    ## Extract response.
+    yi <- as.matrix(data[bids$current, y])
     
-    ## Compute log-likelihood.
-    ll <- family$loglik(yi, family$map2par(eta))
-    
-    ## Extract 'out of sample' response.
-    ## bids$oos is the last out-of-sample batch index vector.
-    ## If oos_batch = 'next' is used this one should be the
-    ## first one again (identical to bids$initial).
+    # Draw batch IDs for out of sample batch
+    # Overwrite $oos in the bids list.
+    bids$oos <- if (oos_batch == "next") {
+      bids$`next`
+    } else if (oos_batch == "random") {
+      get_batch_ids(batch_ids, i = sample(maxit1, 1), N = N)
+    } else if (oos_batch == "same") {
+      bids$current
+    } else stop("Whoops, unknown oos_batch case; we should never end up here")
     
     y.oos <- as.matrix(data[bids$oos, y])
-    XX    <- as.matrix(data[bids$oos, vars])
-    if (scalex) XX <- myscale(XX, x_mu = x_mu, x_sd = x_sd)
-
-    X <- list()
-    for (j in nx) {
-      if (ncol(XX) == 1){
-        if (ncol(beta[[j]]) == 1 ) {
-          Xoos[[j]] <- cbind("(Intercept)" = rep(1, b.size))
-        } else {
-          Xoos[[j]] <- cbind("(Intercept)" = rep(1, b.size), XXoos)
-        }
-        colnames(Xoos[[j]]) <- colnames(beta[[j]]) 
-      } else {
-        Xoos[[j]]   <- cbind("(Intercept)" = rep(1, b.size),
-                             XXoos[, setdiff(colnames(beta[[j]]), "(Intercept)" )])
-        colnames(Xoos[[j]]) <- c("(Intercept)", setdiff(colnames(beta[[j]]), "(Intercept)" ))
-      }
-    } 
-    for (j in nx) {
-      ## Setup linear predictor.
-      eta[[j]] <- drop(Xoos[[j]] %*% beta[[j]][maxit1, ])
+    # draw batchwise from big.matrix and scale
+    XX    <- as.matrix(data[bids$current, vars])
+    XXoos <- as.matrix(data[bids$oos, vars])
+    if (scalex){
+      XX <- myscale(XX, x_mu = x_mu, x_sd = x_sd)
+      XXoos <- myscale(XXoos, x_mu = x_mu, x_sd = x_sd)
     }
-   
-    ## Compute 'out of sample' log-likelihood.
-    ll0      <- family$loglik(y.oos, family$map2par(eta))
-    ll0.list <- c(ll0.list, ll0)
+    X <- Xoos <- list()
     
+    for (j in nx) {
+      ## Save last iteration.
+      beta[[j]][i, ] <- beta[[j]][i - 1L, ]
+      if(ncol(XX) == 1){
+        if(ncol(beta[[j]]) == 1 ){
+          X[[j]] <- cbind( "(Intercept)" = rep(1,b.size))
+          Xoos[[j]] <- cbind( "(Intercept)" = rep(1,b.size))
+        } else {
+          X[[j]] <- cbind( "(Intercept)" = rep(1,b.size), XX)
+          Xoos[[j]] <- cbind( "(Intercept)" = rep(1,b.size),XXoos)
+        }
+        colnames(Xoos[[j]]) <- colnames(X[[j]]) <- colnames(beta[[j]]) 
+      } else {
+        X[[j]] <- cbind( "(Intercept)" = rep(1,b.size), XX[,setdiff(colnames(beta[[j]]), "(Intercept)" )])
+        Xoos[[j]] <- cbind( "(Intercept)" = rep(1,b.size),XXoos[,setdiff(colnames(beta[[j]]), "(Intercept)" )])
+        colnames(Xoos[[j]]) <- colnames(X[[j]]) <- c("(Intercept)", setdiff(colnames(beta[[j]]), "(Intercept)" ))
+      }
+      ## Setup linear predictor.
+      eta[[j]] <-
+        drop(X[[j]] %*% beta[[j]][i, ])
+      
+      ## out of sample
+      eta.oos[[j]] <-
+        drop(Xoos[[j]] %*% beta[[j]][i, ])
+    }
+    
+    
+    # out of sample
+    ll.oos <- family$loglik(y.oos, family$map2par(eta.oos))
+    ll.oos.afterint <- ll.oos
+    
+    ## Compute log-likelihood.
+    df <- sum(sapply(beta, function(b) {
+      sum(b[i, ] != 0)
+    }))
+    ll0 <- family$loglik(yi, family$map2par(eta))
+    ic0 <- -2 * ll0 + K * df
+    ic.oos <- -2 * ll.oos + K * df
+    
+    ll0.list <- c(ll0.list, ll0)
+    ic0.list <- c(ic0.list, ic0)
+    ic.oos.list <- c(ic.oos.list, ic.oos)
+    
+    
+    bb = 20
+    if (plot & (i %% 10 == 0)) {
+      if (i > bb + 4) {
+        bic.min <- which.min(ma(ic0.list, order = bb))
+        if (bic.min < bb + 1)
+          bic.min <- bic.min + bb
+      }
+      par(mfrow = n2mfrow(length(nx) + 2))
+      plot(y = ic.oos.list, x = 2:i, xlab = "Iteration", ylab = "BIC")
+      
+      if (i > bb + 4) {
+        abline(v = bic.min)
+        abline(v = bic.min - bb)
+      }
+      if (i > 5) {
+        fit2 <- lowess(y = ic.oos.list, x = 2:i)
+        lines(fit2)
+      }
+      plot( y = ll0.list, x = 2:i, xlab = "Iteration", ylab = "logLik")
+      
+      if (i > bb + 4) {
+        abline(v = bic.min)
+        abline(v = bic.min - bb)
+      }
+      if (i > 5) {
+        fit2 <- lowess(y = ll0.list, x = 2:i)
+        lines(fit2)
+      }
+      for (j in nx) {
+        matplot(beta[[j]][1:i, ], type = "l", lty = 1, main = j, xlab = "Iteration", ylab = "Coefficients")
+        
+        if (i > bb + 4) {
+          abline(v = bic.min)
+          abline(v = bic.min - bb)
+        }
+      }
+    }
+    
+    
+    
+    sign.list <- rep(-Inf, length(nx))
+    names(sign.list) <- nx
+    
+    for (j in nx) {
+      eta0 <- eta
+      ## Get coefficients and setup.
+      tbeta <- beta[[j]][i, ]
+      ## Positive.
+      tbeta[1] <- tbeta[1] + err01
+      eta[[j]] <- drop(X[[j]] %*% tbeta)
+      ll1      <- family$loglik(yi, family$map2par(eta))
+      
+      ## Negative
+      tbeta[1] <- tbeta[1] - 2 * err01
+      eta[[j]] <- drop(X[[j]] %*% tbeta)
+      ll2      <- family$loglik(yi, family$map2par(eta))
+      
+      grad <- (ll1 - ll2) / err02
+      sign.list[[j]] <- grad
+    }
+    
+    pset <- powerset.list
+    for (j in nx) {
+      if (sign.list[[j]] == -Inf) {
+        ok <- !grepl(j, pset)
+        pset <- pset[ok]
+      }
+    }
+    
+    if (length(pset) != 0) {
+      beta.final <- list()
+      for (j in nx)
+        beta.final[[j]] <- beta[[j]][i, ]
+      ic.oos.old <- ic.oos
+      
+      beta.wip <- list()
+      for (j in nx)
+        beta.wip[[j]] <- beta[[j]][i, ]
+      
+      for (l in 1:length(pset)) {
+        # ps <- !is.na(pset[l,])
+        sign.list2 <- sign.list[pset[[l]]]
+        gnorm <- sqrt(sum(sign.list2 ^ 2))
+        
+        if (gnorm > eps_int[i]) {
+          sign.list2 <- eps_int[i] * sign.list2 / gnorm
+        }
+        for (ij in pset[[l]]) {
+          sign.list2[ij] <- ifelse(
+            i < 0.8 * maxit1 & abs(sign.list2[ij]) <
+              nu_int * eps_int[i],
+            sign(sign.list2[ij]) * nu_int * eps_int[i],
+            sign.list2[ij]
+          )
+        }
+        
+        for (j in pset[[l]]) {
+          grad <- sign.list2[[j]]
+          beta[[j]][i, 1] <- beta[[j]][i, 1] + grad
+          
+          eta[[j]] <- drop(X[[j]] %*% beta[[j]][i, ])
+        }
+        
+        df <- sum(sapply(beta, function(b) {
+          sum(b[i, ] != 0)
+        }))
+        ##df <- sum(data.frame(beta)[i, ] != 0)
+        
+        ## keep update only if oos information crit improves
+        for (j in nx)
+          eta.oos[[j]] <- drop(Xoos[[j]] %*% beta[[j]][i, ])
+        
+        ll.oos <- family$loglik(y.oos, family$map2par(eta.oos))
+        ic.oos.new <- -2 * ll.oos + K * df
+        if (ic.oos.new < ic.oos.old) {
+          # keep current try
+          for (j in nx)
+            beta.final[[j]] <- beta[[j]][i, ]
+          ps.final <- pset[[l]]
+          ic.oos.old <- ic.oos.new
+          ll.oos.afterint <- ll.oos
+        }
+        for (j in pset[[l]])
+          beta[[j]][i, ] <- beta.wip[[j]]
+        
+      }  # this bracket is for pset
+      
+      # save best beta
+      for (j in nx)
+        beta[[j]][i, ] <- beta.final[[j]]
+      
+    }
+    
+    eta0 <- eta
+    sign.list <- pos.list <- rep(-Inf, length(nx))
+    names(sign.list) <- names(pos.list) <- nx
+    
+    for (j in nx) {
+      ## Get coefficients and setup.
+      tbeta <- beta[[j]][i, ]
+      nc <- length(intvar[[j]]) - 1
+      
+      if (nc > 0) {
+        eta[[j]] <- eta[[j]] + err01
+        ll1 <- family$d(yi, family$map2par(eta), log = TRUE)
+        
+        ## Negative
+        eta[[j]] <- eta[[j]] - 2 * err01
+        ll2 <- family$d(yi, family$map2par(eta), log = TRUE)
+        # if(T ) print(ll2)
+        
+        grad <- (ll1 - ll2) / (2 * err01)
+        # print(mean(grad))
+        eta[[j]] <- eta[[j]] + err01
+        
+        cc <- try(cor(grad, X[[j]][, vardist[[j]], drop = FALSE]), FALSE)
+        
+        #[,-1]))
+        cc[is.na(cc)] <- 0
+        if (is.numeric(cc)) {
+          ## Select update
+          jj <- which.max(abs(cc)) + 1
+        } else {
+          jj <- 1
+        }  # interecept if cor gives error
+        
+        eta0  <- eta
+        ## Get coefficients and setup.
+        tbeta <- beta[[j]][i, ]
+        
+        if (max(abs(cc)) < cap[i]) {
+          grad <- 0
+        } else {
+          # average partial derivative with respect to best variable
+          grad <- t(grad) %*% X[[j]][,intvar[[j]][jj] , drop = FALSE]/ b.size 
+          # ## Positive.
+          # tbeta[jj] <- tbeta[jj] + err01
+          # eta[[j]] <-
+          #   drop(X[batch_ids[[i]],intvar[[j]] , drop = FALSE] %*% tbeta)
+          # ll1 <- family$loglik(yi, family$map2par(eta))
+          # 
+          # ## Negative
+          # tbeta[jj] <- tbeta[jj] - 2 * err01
+          # eta[[j]] <-
+          #   drop(X[batch_ids[[i]],intvar[[j]] , drop = FALSE] %*% tbeta)
+          # ll2 <- family$loglik(yi, family$map2par(eta))
+          # 
+          # grad <- (ll1 - ll2) / err02
+        }
+        
+        sign.list[[j]] <- grad
+        pos.list[[j]]  <- jj # position in intvar
+        
+      }
+      
+    }
+    
+    # Max number of characters in case all parameters are set;
+    # used for formatting cat() output if verbose = TRUE
+    pset_fmt <- paste0("%-", max(sapply(pset, function(x) nchar(paste(x, collapse = ", ")))), "s")
+    
+    ps.final <- "no par"
+    for (j in nx) {
+      if (sign.list[[j]] == 0 | sign.list[[j]] == -Inf) {
+        ok   <- !grepl(j, pset)
+        pset <- pset[ok]
+      }
+    }
+    
+    if (length(pset) == 0) {
+      # for (j in nx) beta[[j]][i, ] <- beta[[j]][i - 1, ]
+    } else {
+      ## beta.final <- list()
+      for (j in nx)
+        beta.final[[j]] <- beta[[j]][i, ]
+      #ic.oos.old <- ic.oos
+      
+      beta.wip <- list()
+      for (j in nx)
+        beta.wip[[j]] <- beta[[j]][i, ]
+      for (l in 1:length(pset)) {
+        # ps <- !is.na(pset[l,])
+        sign.list2 <- sign.list[pset[[l]]]
+        gnorm      <- sqrt(sum(sign.list2 ^ 2))
+        
+        if (gnorm > eps[i]) {
+          sign.list2 <- eps[i] * sign.list2 / gnorm
+        }
+        for (ij in pset[[l]]) {
+          sign.list2[ij] <- ifelse(i < 0.8 * maxit1 & abs(sign.list2[ij]) < nu * eps[i],
+                                   sign(sign.list2[ij]) * nu * eps[i],
+                                   sign.list2[ij])
+        }
+        
+        for (j in pset[[l]]) {
+          jj   <- pos.list[[j]]
+          grad <- sign.list2[[j]]
+          
+          beta[[j]][i, intvar[[j]][jj]] <- beta[[j]][i, intvar[[j]][jj]] + grad
+          
+          eta[[j]] <- drop(X[[j]] %*% beta[[j]][i, ])
+        }
+        
+        ## df <- sum(data.frame(beta)[i, ] != 0)
+        df <- sum(sapply(beta, function(b) {
+          sum(b[i, ] != 0)
+        }))
+        
+        ## keep update only if oos information crit improves
+        for (j in nx)
+          eta.oos[[j]] <- drop(Xoos[[j]] %*% beta[[j]][i, ])
+        
+        ll.oos <- family$loglik(y.oos, family$map2par(eta.oos))
+        ic.oos.new <- -2 * ll.oos + K * df
+        if (ic.oos.new < ic.oos.old) {
+          # keep current try
+          for (j in nx)
+            beta.final[[j]] <- beta[[j]][i, ]
+          
+          ps.final <- pset[[l]]
+          ic.oos.old <- ic.oos.new
+          ll.oos.aftercoef <- ll.oos
+        }
+        for (j in pset[[l]])
+          beta[[j]][i, ] <- beta.wip[[j]]
+        
+      }  # this bracket is for pset
+      
+      # save best beta
+      for (j in nx)
+        beta[[j]][i, ] <- beta.final[[j]]
+      
+    }
+    ll.oos.afterint.list <- c(ll.oos.afterint.list, ll.oos.afterint)
     if (verbose) {
       if (ia) cat("\r")
-      cat("iter = ", formatC(i, width = tw, flag = " "), ", ",
-          "logLik = ", formatC(round(ll, 4L), width = tw, flag = " "), "\n", sep = "")
+      cat(
+        "iter = ",     formatC(i, width = tw, flag = " "),
+        ", logLik = ", formatC(round(ll0, 4L), width = tw, flag = " "),
+        ", df = ",     formatC(df, width = tw, flag = " "),
+        ", ",          sprintf(pset_fmt, paste(ps.final, collapse = ", ")),
+        if (!ia) "\n" else NULL,
+        sep = ""
+      )
     }
     
-    return(list(coefficients = beta,
-                logLik       = ll0.list,
-                maxit        = list(var_selection = maxit, refitting = maxit_refit)))
+  } # End of loop over 2:maxit1
+  
+  
+  ## Compute log-likelihood.
+  ll <- family$loglik(yi, family$map2par(eta))
+  
+  ## Extract 'out of sample' response.
+  ## bids$oos is the last out-of-sample batch index vector.
+  ## If oos_batch = 'next' is used this one should be the
+  ## first one again (identical to bids$initial).
+  
+  y.oos <- as.matrix(data[bids$oos, y])
+  XX    <- as.matrix(data[bids$oos, vars])
+  if (scalex) XX <- myscale(XX, x_mu = x_mu, x_sd = x_sd)
+  
+  X <- list()
+  for (j in nx) {
+    if (ncol(XX) == 1){
+      if (ncol(beta[[j]]) == 1 ) {
+        Xoos[[j]] <- cbind("(Intercept)" = rep(1, b.size))
+      } else {
+        Xoos[[j]] <- cbind("(Intercept)" = rep(1, b.size), XXoos)
+      }
+      colnames(Xoos[[j]]) <- colnames(beta[[j]]) 
+    } else {
+      Xoos[[j]]   <- cbind("(Intercept)" = rep(1, b.size),
+                           XXoos[, setdiff(colnames(beta[[j]]), "(Intercept)" )])
+      colnames(Xoos[[j]]) <- c("(Intercept)", setdiff(colnames(beta[[j]]), "(Intercept)" ))
+    }
+  } 
+  for (j in nx) {
+    ## Setup linear predictor.
+    eta[[j]] <- drop(Xoos[[j]] %*% beta[[j]][maxit1, ])
+  }
+  
+  ## Compute 'out of sample' log-likelihood.
+  ll0      <- family$loglik(y.oos, family$map2par(eta))
+  ll0.list <- c(ll0.list, ll0)
+  
+  if (verbose) {
+    if (ia) cat("\r")
+    cat("iter = ", formatC(i, width = tw, flag = " "), ", ",
+        "logLik = ", formatC(round(ll, 4L), width = tw, flag = " "), "\n", sep = "")
+  }
+  
+  return(list(coefficients = beta,
+              logLik       = ll0.list,
+              logLik.afterint = ll.oos.afterint.list,
+              maxit        = list(var_selection = maxit, refitting = maxit_refit)))
 } # end of function: sdr.gradboostfit
 
 # cyclic gradboosting with correlation filtering
