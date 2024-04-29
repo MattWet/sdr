@@ -29,7 +29,7 @@ expect_inherits(mod, "stagewise",   info = "Testing return class")
 expect_true(is.list(mod),           info = "Testing return class")
 
 # Testing content of the object (structure)
-expected_names <- c("cap", "coefficients", "family", "formula", "logLik",
+expected_names <- c("cap", "coefficients", "family", "formula", "logLik", "logLik.afterint",
                     "maxit", "nobs", "varnames", "X", "y")
 expect_identical(sort(names(mod)), sort(expected_names),
                  info = "Testing if the named list contains all expected elements")
