@@ -11,8 +11,8 @@
 
 \usage{
 \method{predict}{stagewise}(object, newdata = NULL, type = c("link", "parameter"), 
-drop = TRUE, mstart = NULL, mstop = NULL, model = NULL,
-   ...)
+drop = TRUE, mstart = NULL, mstop = NULL, iterations = NULL, 
+model = NULL, what = c("mean", "matrix"), ...)
 }
 
 \arguments{
@@ -26,9 +26,13 @@ drop = TRUE, mstart = NULL, mstop = NULL, model = NULL,
     the list structure is dropped.}
   \item{mstart}{Integer, prediction is based on mean of coefficients from
     iteration \code{mstart} up to \code{mstop}. If no mstart is provided, mstart is set to median of iterations.}
+  \item{iterations}{Explicitly define which iterations should be considered for prediction. Input can be a vector. 
+    If not provided, then iteration from \code{mstart} up to \code{mstop} are the default.}
   \item{mstop}{Integer, prediction is based on mean of coefficients from
     iteration \code{mstart} up to \code{mstop}. If no mstop is provided, mstop is set to last iteration.}
   \item{model}{Character or integer, specifies the model for which predictions should be computed.}
+  \item{what}{ Compute either mean of coefficients along iterations or use complete matrix of coefficients
+    where each column correspond to a iteration for computing the predictions.}
   \item{\dots}{Not used.}
 }
 
