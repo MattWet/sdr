@@ -51,10 +51,10 @@
 \keyword{package}
 
 \seealso{
-  \code{\link{sdr}}, \code{\link{predict.stagewise}}.
+  \code{\link{sdr}}, \code{\link{predict.sdr}}.
 }
 
 \examples{
-## See the ?sdr manual page.
+## See the ?stagewise manual page.
 }
 
