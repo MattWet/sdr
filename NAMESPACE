@@ -19,18 +19,18 @@ importFrom("utils", "write.table", "read.csv")
 
 export("sdr", "alpha2cap2", "ma", "newformula")
 
-S3method("predict",   "stagewise")
-S3method("residuals", "stagewise")
-S3method("logLik",    "stagewise")
-S3method("summary",   "stagewise")
-S3method("AIC",       "stagewise")
-S3method("BIC",       "stagewise")
-S3method("coef",      "stagewise")
-S3method("plot",      "stagewise")
+S3method("predict",   "sdr")
+S3method("residuals", "sdr")
+S3method("logLik",    "sdr")
+S3method("summary",   "sdr")
+S3method("AIC",       "sdr")
+S3method("BIC",       "sdr")
+S3method("coef",      "sdr")
+S3method("plot",      "sdr")
 
-S3method("plot",      "stagewise_residuals")
+S3method("plot",      "sdr_residuals")
 
-S3method("print",     "summary.stagewise")
+S3method("print",     "summary.sdr")
 
 
 
