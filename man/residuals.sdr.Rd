@@ -1,6 +1,6 @@
-\name{residuals.stagewise}
-\alias{residuals.stagewise}
-\alias{plot.stagewise_residuals}
+\name{residuals.sdr}
+\alias{residuals.sdr}
+\alias{plot.sdr_residuals}
 
 \title{
   Stagewise Model Residuals
@@ -11,10 +11,10 @@
 
 \usage{
 ## Extract residuals.
-\method{residuals}{stagewise}(object, type = c("quantile", "response"), nsamps = NULL, ...)
+\method{residuals}{sdr}(object, type = c("quantile", "response"), nsamps = NULL, ...)
 
 ## Plotting method.
-\method{plot}{stagewise_residuals}(x, which = c("hist-resid", "qq-resid", "wp"),
+\method{plot}{sdr_residuals}(x, which = c("hist-resid", "qq-resid", "wp"),
   spar = TRUE, ...)
 }
 
@@ -26,7 +26,7 @@
   \item{nsamps}{To get a first feeling it can
     be useful to compute residuals only based on \code{nsamps} samples, i.e., \code{nsamps}
     specifies the number of samples which are extracted on equidistant intervals.}
-  \item{x}{Object returned from function \code{residuals.stagewise()}.}
+  \item{x}{Object returned from function \code{residuals.sdr()}.}
   \item{which}{Should a histogram with kernel density estimates be plotted, a qq-plot or a worm plot? 
   Any subset of c("hist-resid", "qq-resid", "wp") can be specified. Per default all three are plotted.}
   \item{spar}{Should graphical parameters be set by the plotting function?}
