@@ -14,12 +14,10 @@
 }
 
 \usage{
-## Model fitting function.
 sdr(formula, family = NULL, data = NULL, batch_ids = NULL,
   updating = c("thresdesc", "bs", "cyclic", "noncyclic"), light = FALSE,
   CF = TRUE, cap = NULL,  caps = NULL,  scalex = TRUE, refitting = TRUE,
   eps = 0.01, nu = 0.1, ncaps = 10, quick_ffdf = FALSE, ...)
-
 }
 
 
@@ -65,33 +63,25 @@ sdr(formula, family = NULL, data = NULL, batch_ids = NULL,
 }
 
 \references{
-  Umlauf N, Klein N, Zeileis A (2019). BAMLSS: Bayesian Additive Models for Location,
-  Scale and Shape (and Beyond). \emph{Journal of Computational and Graphical Statistics},
-  \bold{27}(3), 612--627. \doi{10.1080/10618600.2017.1407325}
-
-  Umlauf N, Klein N, Simon T, Zeileis A (2021).
-  bamlss: A Lego Toolbox for Flexible Bayesian Regression (and Beyond).
-  \emph{Journal of Statistical Software},
-  \bold{100}(4), 1--53. \doi{10.18637/jss.v100.i04}
-  
   Mayr A., Fenske N, Hofner B, Kneib T, Schmid M (2012).
-     Generalized additive models for location, scale and shape for
-     high-dimensional data - a flexible approach based on boosting.
-     \emph{Journal of the Royal Statistical Society, Series C (Applied Statistics)}
-     \bold{61}(3), 403--427.
+  Generalized additive models for location, scale and shape for
+  high-dimensional data - a flexible approach based on boosting.
+  \emph{Journal of the Royal Statistical Society, Series C (Applied Statistics)}
+  \bold{61}(3), 403--427. \doi{10.1111/j.1467-9876.2011.01033.x}
 
-Rigby, R.A. and Stasinopoulos, D.M. (2005)
-     Generalized Additive Models for Location, Scale and Shape.
-     \emph{Journal of the Royal Statistical Society, Series C (Applied Statistics)}
-     \bold{54}(3), 507--554.
+  Rigby, R.A. and Stasinopoulos, D.M. (2005)
+  Generalized Additive Models for Location, Scale and Shape.
+  \emph{Journal of the Royal Statistical Society, Series C (Applied Statistics)}
+  \bold{54}(3), 507--554. \doi{10.1111/j.1467-9876.2005.00510.x}
   
   Tibshirani RJ (2015).
   A General Framework for Fast Stagewise Algorithms.
   Journal of Machine Learning Research 
-  \bold{16}(78), 2543--2588.
-  
+  \bold{16}(78), 2543--2588. \url{http://jmlr.org/papers/v16/tibshirani15a.html}
 
-  
+  Umlauf N, Klein N, Zeileis A (2019). BAMLSS: Bayesian Additive Models for Location,
+  Scale and Shape (and Beyond). \emph{Journal of Computational and Graphical Statistics},
+  \bold{27}(3), 612--627. \doi{10.1080/10618600.2017.1407325}
 }
 
 \seealso{
@@ -102,13 +92,13 @@ Rigby, R.A. and Stasinopoulos, D.M. (2005)
 }
 
 \details{
-  Distributional regression models are models in which all distributional parameters 
-  can depend in an additive way on covariates. We incorporate stagewise 
-  boosting optimization for modelfitting with semi-constant step length.
+  Distributional regression models are characterized by the dependency of all
+  distributional parameters on covariates in an additive manner. To facilitate model fitting,
+  we use stagewise boosting optimization with a semi-constant step length.
 }
 
 \value{
-  An object of class "stagewise". Contains, among other, the data used for modelfitting, 
+  An object of class \code{"stagewise"}. Contains, among other, the data used for modelfitting, 
   the evolution of coefficient paths and the evolution of the log-likelihood.
 }
 
@@ -133,17 +123,18 @@ d$eta.sigma <- 0.5 * d$x3 + 0.25 * d$x4 -
 ## Draw normal distributed
 ## response for given predictors.
 d$y <- rNO(nobs, mu = d$eta.mu,
-           sigma = exp(d$eta.sigma))
+  sigma = exp(d$eta.sigma))
 
 ## Model formula.
 f <- as.formula(paste("y ~ ",
-                      paste0("x", 1:p, collapse = "+")))
+  paste0("x", 1:p, collapse = "+")))
 f <- list(f, update(f, sigma ~ .))
 
 ## Variable selection with correlation filtering
 ## and best subset updating.
 b <- sdr(formula = f, data = d, CF = TRUE, updating = "bs",
-         family = NO, maxit = 300)
+  family = NO, maxit = 300)
+
 plot(b)
 
 ## Determine early stopping through BIC.
@@ -157,8 +148,8 @@ nf <- newformula(b, mstop = itermax_bic, name = "y")
 
 ## Refit until convergence.
 b_final <- sdr(formula = nf, data = d, updating = "bs",
-               family = NO, CF = FALSE, maxit = 300,
-               coef_start = cb)
+  family = NO, CF = FALSE, maxit = 300,
+  coef_start = cb)
 
 # Plot and summary
 plot(b_final)
@@ -175,7 +166,8 @@ mse1 <- mean((d$y - pred$mu)^2)
 ## Other flavours.
 ## Batchwise noncyclical updating with correlation filtering.
 b <- sdr(formula = f, data = d, family = NO, CF = TRUE, updating = "bs",
-         maxit = 300, batch_ids = 500)
+  maxit = 300, batch_ids = 500)
+
 plot(b)
 
 bic <- BIC(b)
@@ -185,17 +177,18 @@ cb <- coef(b, mstop = itermax_bic, refit = TRUE)
 nf <- newformula(b, mstop = itermax_bic, name = "y")
 
 b_final <- sdr(formula = nf, data = d, updating = "bs",
-               family = NO, CF = FALSE, maxit = 300,
-               coef_start = cb, batch_ids = 500)
+  family = NO, CF = FALSE, maxit = 300,
+  coef_start = cb, batch_ids = 500)
+
 plot(b_final)
 pred <- predict(b_final)
 mse2 <- mean((d$y - pred$mu)^2)
-
 
 ## Batchwise non cyclic updating with correlation filtering.
 b <- sdr(formula = f, data = d, updating = "noncyclic",
          family = NO, CF = TRUE, maxit = 300,
          batch_ids = 500)
+
 plot(b)
 
 bic <- BIC(b)
@@ -205,25 +198,26 @@ cb <- coef(b, mstop = itermax_bic, refit = TRUE)
 nf <- newformula(b, mstop = itermax_bic, name = "y") 
 
 b_final <- sdr(formula = nf, data = d, updating = "noncyclic",
-               family = NO, CF = FALSE, maxit = 300,
-               coef_start = cb, batch_ids = 500)
+  family = NO, CF = FALSE, maxit = 300,
+  coef_start = cb, batch_ids = 500)
+
 plot(b_final)
 pred <- predict(b_final)
 mse3 <- mean((d$y - pred$mu)^2)
 
 ## Batchwise threshold descent with best subset updating.
-## K is penalty parameter in BIC, i.e. BIC = -2*logLik + df*K
-batch_ids = 500
+## K is penalty parameter in BIC, i.e., BIC = -2*logLik + df*K.
 b <- sdr(formula = f, data = d, updating = "thresdesc",
-         family = NO, CF = TRUE, maxit = 100, ncaps = 10,
-         batch_ids = batch_ids, K = log(batch_ids))
-# Coef-paths from refitting of best model
+  family = NO, CF = TRUE, maxit = 100, ncaps = 10,
+  batch_ids = 500, K = log(batch_ids))
+
+## Coefficient paths from refitting of best model.
 plot(b, which = "coefficients")
 
 pred <- predict(b)
 mse4 <- mean((d$y - pred$mu)^2)
 
-c(mse1,mse2,mse3,mse4)
+c(mse1, mse2, mse3, mse4)
 }
 }
 
