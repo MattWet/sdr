@@ -85,9 +85,9 @@ sdr(formula, family = NULL, data = NULL, batch_ids = NULL,
 }
 
 \seealso{
-  \code{\link{plot.stagewise}}, \code{\link{AIC.stagewise}},
-  \code{\link{predict.stagewise}}, \code{\link{residuals.stagewise}},
-  \code{\link{plot.stagewise_residuals}}, \code{\link{coef.stagewise}},
+  \code{\link{plot.sdr}}, \code{\link{AIC.sdr}},
+  \code{\link{predict.sdr}}, \code{\link{residuals.sdr}},
+  \code{\link{plot.sdr_residuals}}, \code{\link{coef.sdr}},
   \code{\link{newformula}}
 }
 
@@ -98,7 +98,7 @@ sdr(formula, family = NULL, data = NULL, batch_ids = NULL,
 }
 
 \value{
-  An object of class \code{"stagewise"}. Contains, among other, the data used for modelfitting, 
+  An object of class \code{"sdr"}. Contains, among other, the data used for modelfitting, 
   the evolution of coefficient paths and the evolution of the log-likelihood.
 }
 
