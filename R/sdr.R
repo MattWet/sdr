@@ -884,7 +884,7 @@ sdr <- function(formula,
   }
   
   # Adding class to mfd and return
-  class(mfd) <- "stagewise"
+  class(mfd) <- "sdr"
   
   return(mfd)
 }
@@ -2717,7 +2717,7 @@ sdr.gradboostfit2_old <- function(X,
 
 
 ## Model frame.
-model.frame.stagewise <- function(formula, data = NULL, ...) {
+model.frame.sdr <- function(formula, data = NULL, ...) {
   dots  <- list(...)
   nargs <- dots[match(c("data", "na.action", "subset"), names(dots), 0)]
   if (length(nargs) || is.null(formula$model) || !is.null(data)) {
@@ -2751,11 +2751,11 @@ model.frame.stagewise <- function(formula, data = NULL, ...) {
   } else {
     return(formula$model)
   }
-} # end of function: model.frame.stagewise
+} # end of function: model.frame.sdr
 
 
 ## Model matrix.
-model.matrix.stagewise <- function(object, ...) {
+model.matrix.sdr <- function(object, ...) {
   mf <- model.frame(object, ...)
   
   X <- list()
@@ -2779,11 +2779,11 @@ model.matrix.stagewise <- function(object, ...) {
     # object$scaled[[i]][[j - 1]]$min) / xr } }
   }
   return(X)
-} # end of function: model.matrix.stagewise
+} # end of function: model.matrix.sdr
 
 
 ## Predict method.
-predict.stagewise <-
+predict.sdr <-
   function(object,
            newdata = NULL,
            type = c("link", "parameter"),
@@ -2876,7 +2876,7 @@ predict.stagewise <-
   }
 
 # Extract coefficients.
-coef.stagewise <- function(object,
+coef.sdr <- function(object,
                            model = NULL,
                            refit = FALSE,
                            mstop = NULL,
@@ -2944,7 +2944,7 @@ coef.stagewise <- function(object,
 }
 
 
-# coef.stagewise <- function(object, ...) {
+# coef.sdr <- function(object, ...) {
 #
 # }
 
@@ -2958,7 +2958,7 @@ newformula <- function(object,
     cat("Last iteration is used as 'mstop' is not provided.")
   }
   
-  coef <- coef.stagewise(object = object, mstop = mstop, refit = TRUE)
+  coef <- coef.sdr(object = object, mstop = mstop, refit = TRUE)
   nc   <- names(coef)
   coef <- lapply(nc,
     FUN = function(i) {
@@ -2990,7 +2990,7 @@ newformula <- function(object,
 ## Summary method.
 # Umschreiben so dass iter automatisch uebernommen wird. Parameterverteilung
 # interessiert dann keinen mehr
-summary.stagewise <- function(object,
+summary.sdr <- function(object,
                               digits = max(3, getOption("digits") - 3),
                               mstart = round(0.5 * length(object$logLik)),
                               mstop  = length(object$logLik),
@@ -3108,7 +3108,7 @@ print_bamlss_formula <- function(x, ...) {
 }
 
 ##### Print needs rework Print method for summary.
-print.summary.stagewise <- function(x, ...) {
+print.summary.sdr <- function(x, ...) {
   cat("\nCall:\n")
   print(x$call)
   cat("---\n")
@@ -3143,7 +3143,7 @@ print.summary.stagewise <- function(x, ...) {
 
 
 
-logLik.stagewise <- function(object,
+logLik.sdr <- function(object,
                              mstart = 1,
                              mstop = length(object$logLik),
                              all = TRUE,
@@ -3162,24 +3162,24 @@ logLik.stagewise <- function(object,
     df <- mean(df)
   }
   attr(ll, "df") <- df
-  class(ll) <- c("logLik", "logLik.stagewise")
+  class(ll) <- c("logLik", "logLik.sdr")
   return(ll)
 }
 
-AIC.stagewise <- function(object, K = 2, ...) {
+AIC.sdr <- function(object, K = 2, ...) {
   ll <- logLik(object, ...)
   ic <- as.numeric(-2 * ll + K * attr(ll, "df"))
   
-  class(ic) <- "stagewise_AIC"
+  class(ic) <- "sdr_AIC"
   return(ic)
 }
 
-BIC.stagewise <- function(object, ...) {
-  structure(AIC.stagewise(object, K = log(object$nobs), ...),
-            class = "stagewise_BIC")
+BIC.sdr <- function(object, ...) {
+  structure(AIC.sdr(object, K = log(object$nobs), ...),
+            class = "sdr_BIC")
 }
 
-plot.stagewise <- function(x,
+plot.sdr <- function(x,
                            which = c("all", "coefficients", "AIC"),
                            K = 2,
                            bw = 0,
@@ -3270,7 +3270,7 @@ plot.stagewise <- function(x,
 }
 
 
-residuals.stagewise <- function(object,
+residuals.sdr <- function(object,
                                 type = c("quantile", "response"),
                                 nsamps = NULL,
                                 ...) {
@@ -3282,7 +3282,7 @@ residuals.stagewise <- function(object,
     res <- family$residuals(object, type = type, nsamps = nsamps, ...)
     if (length(class(res)) < 2) {
       if (inherits(res, "numeric"))
-        class(res) <- c("stagewise_residuals", class(res))
+        class(res) <- c("sdr_residuals", class(res))
     }
   } else {
     type <- match.arg(type)
@@ -3356,7 +3356,7 @@ residuals.stagewise <- function(object,
       attr(res, "type") <- "Response"
     }
 
-    class(res) <- c("stagewise_residuals", class(res))
+    class(res) <- c("sdr_residuals", class(res))
   }
 
   if (any(j <- !is.finite(res))) res[j] <- NA
@@ -3369,7 +3369,7 @@ c95 <- function (x) {
   return(c(qx[1], Mean = mean(x, na.rm = TRUE), qx[2]))
 }
 
-plot.stagewise_residuals <- function(x,
+plot.sdr_residuals <- function(x,
                                      which = c("hist-resid", "qq-resid", "wp"),
                                      spar = TRUE,
                                      ...) {
@@ -3571,7 +3571,7 @@ plot.stagewise_residuals <- function(x,
   }
 
   return(invisible(NULL))
-} # end of function: plot.stagewise_residuals
+} # end of function: plot.sdr_residuals
 
 
 
