@@ -1,7 +1,7 @@
-\name{AIC.stagewise}
-\alias{AIC.stagewise}
-\alias{BIC.stagewise}
-\alias{logLik.stagewise}
+\name{AIC.sdr}
+\alias{AIC.sdr}
+\alias{BIC.sdr}
+\alias{logLik.sdr}
 
 
 
@@ -14,16 +14,16 @@
   By default \code{AIC = -2*loglik + 2*df}, where \code{df} is the number of
   non-zero coefficient in model, is computed. BIC uses \code{BIC = -2*loglik + K*df}, where K is the number of the sample size. 
   In the batchwise updating case the number corresponds to the batchsize.
-  \code{logLik.stagewise} computes the log likelihood of the model. 
+  \code{logLik.sdr} computes the log likelihood of the model. 
 }
 
 \usage{
 ## AIC/BIC extractor function.
-\method{AIC}{stagewise}(object, K = 2, ...)
-\method{BIC}{stagewise}(object, ...)
+\method{AIC}{sdr}(object, K = 2, ...)
+\method{BIC}{sdr}(object, ...)
 
 ## logLik extractor function.
-\method{logLik}{stagewise}(object, mstart = 1, mstop = length(object$logLik),
+\method{logLik}{sdr}(object, mstart = 1, mstop = length(object$logLik),
   all = TRUE,...)
 
 }
@@ -45,7 +45,7 @@
 }
 
 \value{
-  A vector with class "stagewise_AIC" for BIC and AIC function and a vector of class "logLik.stagewise" for function logLik.
+  A vector with class "sdr_AIC" for BIC and AIC function and a vector of class "logLik.sdr" for function logLik.
 }
 
 \seealso{
