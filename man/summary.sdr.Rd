@@ -1,5 +1,5 @@
-\name{summary.stagewise}
-\alias{summary.stagewise}
+\name{summary.sdr}
+\alias{summary.sdr}
 
 \title{
   Summary for SDR
@@ -10,7 +10,7 @@
 }
 
 \usage{
-\method{summary}{stagewise}(object,
+\method{summary}{sdr}(object,
   digits = max(3, getOption("digits") - 3),
   mstart = round(0.5 * length(object$logLik)),
   mstop = length(object$logLik), ...)
