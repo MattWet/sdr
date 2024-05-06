@@ -25,7 +25,7 @@ expect_silent(mod <- sdr(f, data = data, updating = "bs",
               info = "Running sdr with updating = 'bs' on test data")
 
 # Testing class of returned object
-expect_inherits(mod, "stagewise",   info = "Testing return class")
+expect_inherits(mod, "sdr",   info = "Testing return class")
 expect_true(is.list(mod),           info = "Testing return class")
 
 # Testing content of the object (structure)
@@ -106,14 +106,14 @@ expect_equal(as.vector(coef(mod)$sigma),
 # Testing some methods
 # -------------------------------------------------------
 # For this run also test AIC, BIC, ...
-expect_inherits(AIC(mod), "stagewise_AIC", info = "Testing return of AIC()")
+expect_inherits(AIC(mod), "sdr_AIC", info = "Testing return of AIC()")
 expect_equal(unclass(AIC(mod)),
              c(410.4040, 405.4324, 413.4163, 418.4587, 412.9293,
                409.1634, 410.0194, 405.5066, 401.7213, 392.5901),
              tol = 1e-3,
              info = "Testing values of AIC()")
 
-expect_inherits(BIC(mod), "stagewise_BIC", info = "Testing return of BIC()")
+expect_inherits(BIC(mod), "sdr_BIC", info = "Testing return of BIC()")
 expect_equal(unclass(BIC(mod)),
              c(415.6144, 413.2479, 421.2318, 426.2742, 420.7448,
                419.5841, 420.4401, 415.9273, 412.1420, 403.0108),
@@ -121,7 +121,7 @@ expect_equal(unclass(BIC(mod)),
              info = "Testing values of BIC()")
 
 # Testing logLik method
-expect_identical(class(logLik(mod)), c("logLik", "logLik.stagewise"),
+expect_identical(class(logLik(mod)), c("logLik", "logLik.sdr"),
                  info = "Testing return of logLik()")
 expect_true("df" %in% names(attributes(logLik(mod))), info = "Testing df attribute on logLik() return")
 expect_silent(df <- attr(logLik(mod), "df"),          info = "Testing df attribute on logLik() return")
@@ -145,7 +145,7 @@ rm(pred)
 # Residuals method
 expect_silent(r <- residuals(mod),                             info = "Testing residuals() method")
 expect_identical(attr(r, "type"), "Quantile",                  info = "Testing default return type of residuals()")
-expect_identical(class(r), c("stagewise_residuals", "matrix", "array"),
+expect_identical(class(r), c("sdr_residuals", "matrix", "array"),
                  info = "Testing residuals() return class")
 expect_identical(dim(r), c(1000L, 1L),                         info = "Testing dimension of result of residuals()")
 expect_identical(colnames(r), "y",                             info = "Testing dimnames of result of residuals()")
