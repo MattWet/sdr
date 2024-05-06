@@ -1,17 +1,17 @@
-\name{coef.stagewise}
-\alias{coef.stagewise}
+\name{coef.sdr}
+\alias{coef.sdr}
 
 \title{
-  Coefficients function for stagewise object
+  Coefficients function for sdr object
 }
 
 \description{
-  Method to extract coefficients of fitted stagewise object. Either full coefficients 
+  Method to extract coefficients of fitted sdr object. Either full coefficients 
   are extracted or only non-zero coefficients needed for refitting routine.
 }
 
 \usage{
-\method{coef}{stagewise}(object, model = NULL, refit = FALSE,
+\method{coef}{sdr}(object, model = NULL, refit = FALSE,
                            mstop = NULL, mstart = mstop,...)
 }
 
