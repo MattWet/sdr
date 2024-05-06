@@ -1,16 +1,16 @@
-\name{predict.stagewise}
-\alias{predict.stagewise}
+\name{predict.sdr}
+\alias{predict.sdr}
 
 \title{
   Compute Predictions
 }
 
 \description{
-  Function to compute predictions given new data from fitted stagewise object. 
+  Function to compute predictions given new data from fitted sdr object. 
 }
 
 \usage{
-\method{predict}{stagewise}(object, newdata = NULL, type = c("link", "parameter"), 
+\method{predict}{sdr}(object, newdata = NULL, type = c("link", "parameter"), 
 drop = TRUE, mstart = NULL, mstop = NULL, iterations = NULL, 
 model = NULL, what = c("mean", "matrix"), ...)
 }
