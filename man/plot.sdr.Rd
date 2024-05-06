@@ -1,8 +1,8 @@
-\name{plot.stagewise}
-\alias{plot.stagewise}
+\name{plot.sdr}
+\alias{plot.sdr}
 
 \title{
-  Stagewise Object Plots
+  sdr Object Plots
 }
 
 \description{
@@ -11,7 +11,7 @@
 }
 
 \usage{
-\method{plot}{stagewise}(x, which = c("all", "coefficients", "AIC"), K = 2,
+\method{plot}{sdr}(x, which = c("all", "coefficients", "AIC"), K = 2,
                            bw = 0, spar = TRUE, ...)
 }
 
