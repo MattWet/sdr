@@ -885,6 +885,7 @@ sdr <- function(formula,
   
   # Adding class to mfd and return
   class(mfd) <- "sdr"
+  mfd$call <- match.call()                      
   
   return(mfd)
 }
