@@ -3194,11 +3194,11 @@ plot.sdr <- function(x,
     if (spar)
       par(mfrow = n2mfrow(length(nx) + 2))
     
-    plot(y = ic, x = 1:length(ic), xlab = "Iteration", ylab = "AIC")
+    plot(y = ic, x = 1:length(ic), xlab = "Iteration", ylab = "AIC", type = "l", lty = 1)
     abline(v = bic.min)
     abline(v = bic.min - bw)
     
-    plot(y = ll, x = 1:length(ll), xlab = "Iteration", ylab = "logLik")
+    plot(y = ll, x = 1:length(ll), xlab = "Iteration", ylab = "logLik", type = "l", lty = 1)
     abline(v = bic.min)
     abline(v = bic.min - bw)
     
@@ -3259,7 +3259,7 @@ plot.sdr <- function(x,
     ic <- as.numeric(-2 * ll + K * attr(ll, "df"))
     bic.min <- ifelse(bw > 0, which.min(ma(ic, order = bw)), which.min(ic))
     
-    plot(y = ic, x = 1:length(ic), xlab = "Iteration", ylab = "AIC")
+    plot(y = ic, x = 1:length(ic), xlab = "Iteration", ylab = "AIC", type = "l", lty = 1)
     abline(v = bic.min, lty = 2)
     abline(v = bic.min - bw, lty = 2)
   }
