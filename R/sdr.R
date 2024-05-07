@@ -2989,17 +2989,15 @@ newformula <- function(object,
 
 
 ## Summary method.
-# Umschreiben so dass iter automatisch uebernommen wird. Parameterverteilung
-# interessiert dann keinen mehr
 summary.sdr <- function(object,
-                              digits = max(3, getOption("digits") - 3),
-                              mstart = round(0.5 * length(object$logLik)),
-                              mstop  = length(object$logLik),
-                              ...) {
+                        digits = max(3, getOption("digits") - 3),
+                        mstart = round(0.5 * length(object$logLik)),
+                        mstop  = length(object$logLik),
+                        ...) {
   # for computing parameter summary
   parsum <- function(d, vec = mstart:mstop) {
-    # TODO(R): Fails if you only have less than 4 iterations!
-    dd <- t(d)[, 1:4]
+     dd <- matrix(rep(0, ncol(d)*4), ncol(d), 4)  #t(d)[, 1:4]
+    rownames(dd) <- rownames(t(d))
     if (ncol(d) == 1) {
       dd[1]   <- mean(d[vec, ])
       dd[2:4] <- quantile(d[vec, ], c(0.025, 0.5, 0.975))
@@ -3028,27 +3026,18 @@ summary.sdr <- function(object,
   print(object$family, full = FALSE)
   cat("*---\n")
   
-  cat("\nmstart:\n")
-  object$mstart <- mstart
-  print(object$mstart)
-  cat("---\n")
-  
-  cat("\nmstop:\n")
-  object$mstop <- mstop
-  print(object$mstop)
-  cat("---\n")
   
   for (i in names(object$formula)) {
     if (length(names(object$formula)) > 1) {
       cat("\nFormula", i, ":\n")
       cat("---\n")
-      print(unname(object$formula[i]))
+      cat(as.character(object$formula[i][[1]]), "\n")
       cat("---\n")
     }
     if (length(names(object$formula)) == 1) {
       cat("\nFormula mu:\n")
       cat("---\n")
-      print(object$formula)
+      cat(as.character(object$formula[[1]]), "\n")
       cat("---\n")
     }
     if (!is.null(object$coefficients[[i]])) {
@@ -3060,10 +3049,18 @@ summary.sdr <- function(object,
     }
   }
   
-  cat("\nlogLik-mstart-mstop:\n")
-  print(object$logLik[c(object$mstart, object$mstop)])
+  cat("\nlogLik-@mstart-@mstop:\n")
+  cat(object$logLik[c(mstart, mstop)],"\n")
   cat("---\n")
-  return(invisible(object[6:12]))
+  
+  cat("\nmstart-mstop\n")
+  object$mstart <- mstart
+  object$mstop <- mstop
+  cat(c(object$mstart,object$mstop),"\n")
+  cat("---\n")
+  
+
+  return(invisible(object[c("logLik", "mstart", "mstop", "parsum", "family", "call", "formula")]))
 }
 
 
