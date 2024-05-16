@@ -108,7 +108,7 @@ sdr(formula, family = NULL, data = NULL, batch_ids = NULL,
 set.seed(123)
 
 ## Draw 100 uniform distributed variables.
-nobs <- 1000
+nobs <- 2000
 p <- 100
 d <- matrix(runif(nobs * p, -1, 1), ncol = p)
 
@@ -123,17 +123,24 @@ d$eta.sigma <- 0.5 * d$x3 + 0.25 * d$x4 -
 ## Draw normal distributed
 ## response for given predictors.
 d$y <- rNO(nobs, mu = d$eta.mu,
-  sigma = exp(d$eta.sigma))
+           sigma = exp(d$eta.sigma))
+
+# testing data
+dt <- d[1001:2000,]
+
+# training data
+d <- d[1:1000,]
+
 
 ## Model formula.
 f <- as.formula(paste("y ~ ",
-  paste0("x", 1:p, collapse = "+")))
+                      paste0("x", 1:p, collapse = "+")))
 f <- list(f, update(f, sigma ~ .))
 
 ## Variable selection with correlation filtering
 ## and best subset updating.
 b <- sdr(formula = f, data = d, CF = TRUE, updating = "bs",
-  family = NO, maxit = 300)
+         family = NO, maxit = 300)
 
 plot(b)
 
@@ -148,8 +155,8 @@ nf <- newformula(b, mstop = itermax_bic, name = "y")
 
 ## Refit until convergence.
 b_final <- sdr(formula = nf, data = d, updating = "bs",
-  family = NO, CF = FALSE, maxit = 300,
-  coef_start = cb)
+               family = NO, CF = FALSE, maxit = 300,
+               coef_start = cb)
 
 # Plot and summary
 plot(b_final)
@@ -159,14 +166,14 @@ summary(b_final, mstart = 100, mstop = 300)
 res <- residuals(b_final)
 plot(res)
 
-# Prediction
-pred <- predict(b_final)
-mse1 <- mean((d$y - pred$mu)^2)
+# Prediction and logLik on new testing data
+pred <- predict(b_final, newdata = dt, type = "parameter")
+l1 <- sum(dnorm(dt$y, mean = pred$mu, sd = pred$sigma, log = T))
 
 ## Other flavours.
 ## Batchwise noncyclical updating with correlation filtering.
 b <- sdr(formula = f, data = d, family = NO, CF = TRUE, updating = "bs",
-  maxit = 300, batch_ids = 500)
+         maxit = 300, batch_ids = 500)
 
 plot(b)
 
@@ -177,12 +184,14 @@ cb <- coef(b, mstop = itermax_bic, refit = TRUE)
 nf <- newformula(b, mstop = itermax_bic, name = "y")
 
 b_final <- sdr(formula = nf, data = d, updating = "bs",
-  family = NO, CF = FALSE, maxit = 300,
-  coef_start = cb, batch_ids = 500)
+               family = NO, CF = FALSE, maxit = 300,
+               coef_start = cb, batch_ids = 500)
 
 plot(b_final)
-pred <- predict(b_final)
-mse2 <- mean((d$y - pred$mu)^2)
+
+# Prediction and logLik on new testing data
+pred <- predict(b_final, newdata = dt, type = "parameter")
+l2 <- sum(dnorm(dt$y, mean = pred$mu, sd = pred$sigma, log = T))
 
 ## Batchwise non cyclic updating with correlation filtering.
 b <- sdr(formula = f, data = d, updating = "noncyclic",
@@ -198,26 +207,31 @@ cb <- coef(b, mstop = itermax_bic, refit = TRUE)
 nf <- newformula(b, mstop = itermax_bic, name = "y") 
 
 b_final <- sdr(formula = nf, data = d, updating = "noncyclic",
-  family = NO, CF = FALSE, maxit = 300,
-  coef_start = cb, batch_ids = 500)
+               family = NO, CF = FALSE, maxit = 300,
+               coef_start = cb, batch_ids = 500)
 
 plot(b_final)
-pred <- predict(b_final)
-mse3 <- mean((d$y - pred$mu)^2)
+
+# Prediction and logLik on new testing data
+pred <- predict(b_final, newdata = dt, type = "parameter")
+l3 <- sum(dnorm(dt$y, mean = pred$mu, sd = pred$sigma, log = T))
 
 ## Batchwise threshold descent with best subset updating.
 ## K is penalty parameter in BIC, i.e., BIC = -2*logLik + df*K.
+batch_ids = 500
 b <- sdr(formula = f, data = d, updating = "thresdesc",
-  family = NO, CF = TRUE, maxit = 100, ncaps = 10,
-  batch_ids = 500, K = log(batch_ids))
+         family = NO, CF = TRUE, maxit = 200, ncaps = 10,
+         batch_ids = batch_ids, K = log(batch_ids))
 
 ## Coefficient paths from refitting of best model.
 plot(b, which = "coefficients")
 
-pred <- predict(b)
-mse4 <- mean((d$y - pred$mu)^2)
+# Prediction and logLik on new testing data
+pred <- predict(b, newdata = dt, type = "parameter")
+l4 <- sum(dnorm(dt$y, mean = pred$mu, sd = pred$sigma, log = T))
 
-c(mse1, mse2, mse3, mse4)
+## Comparison of out of sample logLik
+c(l1, l2, l3, l4)
 }
 }
 
