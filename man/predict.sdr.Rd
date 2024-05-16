@@ -94,7 +94,6 @@ b_final <- sdr(formula = nf, data = d, updating = "bs",
 
 # Prediction
 pred <- predict(b_final)
-mse1 <- mean((d$y - pred$mu)^2)
 }
 }
 
