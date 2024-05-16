@@ -4,7 +4,7 @@
 
 if (interactive()) {
     library("tinytest")
-    library("sdr")
+    library("stagewise")
 }
 
 
