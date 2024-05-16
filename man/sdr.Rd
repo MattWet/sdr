@@ -168,7 +168,7 @@ plot(res)
 
 # Prediction and logLik on new testing data
 pred <- predict(b_final, newdata = dt, type = "parameter")
-l1 <- sum(dnorm(dt$y, mean = pred$mu, sd = pred$sigma, log = T))
+l1 <- sum(dnorm(dt$y, mean = pred$mu, sd = pred$sigma, log = TRUE))
 
 ## Other flavours.
 ## Batchwise noncyclical updating with correlation filtering.
@@ -191,7 +191,7 @@ plot(b_final)
 
 # Prediction and logLik on new testing data
 pred <- predict(b_final, newdata = dt, type = "parameter")
-l2 <- sum(dnorm(dt$y, mean = pred$mu, sd = pred$sigma, log = T))
+l2 <- sum(dnorm(dt$y, mean = pred$mu, sd = pred$sigma, log = TRUE))
 
 ## Batchwise non cyclic updating with correlation filtering.
 b <- sdr(formula = f, data = d, updating = "noncyclic",
@@ -214,7 +214,7 @@ plot(b_final)
 
 # Prediction and logLik on new testing data
 pred <- predict(b_final, newdata = dt, type = "parameter")
-l3 <- sum(dnorm(dt$y, mean = pred$mu, sd = pred$sigma, log = T))
+l3 <- sum(dnorm(dt$y, mean = pred$mu, sd = pred$sigma, log = TRUE))
 
 ## Batchwise threshold descent with best subset updating.
 ## K is penalty parameter in BIC, i.e., BIC = -2*logLik + df*K.
@@ -228,7 +228,7 @@ plot(b, which = "coefficients")
 
 # Prediction and logLik on new testing data
 pred <- predict(b, newdata = dt, type = "parameter")
-l4 <- sum(dnorm(dt$y, mean = pred$mu, sd = pred$sigma, log = T))
+l4 <- sum(dnorm(dt$y, mean = pred$mu, sd = pred$sigma, log = TRUE))
 
 ## Comparison of out of sample logLik
 c(l1, l2, l3, l4)
