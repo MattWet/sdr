@@ -1,0 +1,31 @@
+## ----------
+## Topic: Usage of simulation scripts.
+## Date: 2024-05-16
+## Info: README for simulation scripts
+##---------- 
+
+## Overview
+This is the accompanying README file of the simulation
+of the paper Stagewise Boosting Distributional Regression.
+
+## Table of Contents Computation of Simulation
+- bash/R/R: array_job_NO.sh / array_job_NO.R / sim_NO.R
+- bash/R/R: array_job_gamma.sh / array_job_gamma.R / sim_gamma.R
+- bash/R/R: array_job_ZANBI.sh / array_job_ZANBI.R / sim_ZANBI.R
+
+## Usage Computation of Simulation
+For each distribution we have a triplet of scripts to execute the corresponding simulation settings.
+For example: bash/R/R: array_job_NO.sh / array_job_NO.R / sim_NO.R, the bash script array_job_NO.sh
+specifies the HPC-resources (that depend on the specific simulation setting) and sources the first
+R script array_job_NO.R, which is mainly used for processing input variables of the first script.
+In turn the second script sources the last script sim_NO.R which executes the simulation.
+The usage is to qsub the first script with additional variables which specify the exact setting
+of the simulation to the HPC cluster:
+```bash
+qsub array_job_NO 500 100 7
+```
+In above example, 100 replications of the NO setting with 500 observations, 100 noise variables
+and rho = 0.7 are executed. The different suffixes _NO, _gamma, _ZANBI are for the corresponding
+distributions and run for 100 replications. 
+
+
