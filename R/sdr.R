@@ -890,6 +890,19 @@ sdr <- function(formula,
   return(mfd)
 }
 
+                        
+# Helper Function to Draw Batch IDs (row ids)
+#
+# Intended for package internal use only; thus no sanity checks.
+# x is the user object (NULL, single numeric, or a list
+# of prepared indices for the iterations). "i" is the
+# batch we would like to draw, N the total sample size.
+get_batch_ids <- function(x, i, N) {
+    if (is.null(x))         seq_len(N) # simply 1:N
+    else if (is.list(x))    x[[i]]     # i'th user batch
+    else if (is.numeric(x)) sample(seq_len(N), x, replace = FALSE) # random
+    else stop("problems drawing batch IDs")
+}
 
 
 # best subset gradboosting with correlation filtering
@@ -923,477 +936,480 @@ sdr.thresdesc <- function(data,
                           vars = NULL,
                           caps = seq(0.2,0.05, length.out = 10),
                           ...) {
-
-    ia <- interactive()
-    if (!refitting) maxit_refit <- 0
-    
-    # scaling is done on each respective batch separately
-    myscale <- function(x, x_mu, x_sd) {
-      for (n in colnames(x)) x[, n] <- (x[, n] - x_mu[[n]]) / x_sd[[n]]
-      return(x)
-    }
-    
-    maxit1  <- maxit + maxit_refit
-    eps     <- rep(eps, length.out = maxit1)
-    eps_int <- rep(eps_int, length.out = maxit1)
-    
-    N       <- nrow(data)
-    nx      <- names(vardist)
-    ind     <- 1:N
-    
-    if (is.null(batch_ids)) {
-      ind       <- 1:N
-      b.size    <- N
-      batch_ids <- lapply(1:maxit1, function(...) ind)
-    } else if (is.numeric(batch_ids)) {
-      ind       <- 1:N
-      b.size    <- batch_ids
-      batch_ids <- lapply(1:maxit1, function(...) sample(ind, size = batch_ids, replace = FALSE))
-    } # else batch_ids is a list of indices
-    
-    if (!is.list(batch_ids))
-      stop("Argument batch_ids must be a list of indices!")
-    if (length(batch_ids) != maxit1)
-      warning("Length of batch_ids != maxit+maxit_refit, using batch_ids for setting maxit+maxit_refit!")
+  
+  ia <- interactive()
+  if (!refitting) maxit_refit <- 0
+  
+  # scaling is done on each respective batch separately
+  myscale <- function(x, x_mu, x_sd) {
+    for (n in colnames(x)) x[, n] <- (x[, n] - x_mu[[n]]) / x_sd[[n]]
+    return(x)
+  }
+  
+  maxit1  <- maxit + maxit_refit
+  eps     <- rep(eps, length.out = maxit1)
+  eps_int <- rep(eps_int, length.out = maxit1)
+  
+  N       <- nrow(data)
+  nx      <- names(vardist)
+  ind     <- 1:N
+  
+  # If the user provided a list of ids for the batches: check
+  # if that matches the number of requested iterations + refitting.
+  # Throw warning if not.
+  
+  if (is.list(batch_ids) && length(batch_ids) != maxit1) {
+    warning("Length of batch_ids != maxit + maxit_refit; using length of batch_ids provided for setting maxit + maxit_refit!")
     maxit1 <- length(batch_ids)
-
-    # number of plots
-    tw <- length(strsplit(as.character(maxit1), "")[[1]]) + 1L
-    if(!exists("b.size")) b.size <- length(batch_ids[[1]])
-    # K is penalty for IC
-    if (is.null(K)) K <- log(b.size)
-    
-    beta <- list()
-    intvar <- list()
+  }
+  
+  # Draw initial set of batch IDs; `bids` (batch ids) will
+  # be extended during iteration to keep track of ids.
+  bids <- list(initial = get_batch_ids(batch_ids, i = 1, N = N))
+  
+  # TODO(R): Why "plots" and what do we actually do here?
+  # number of plots
+  ##ORIG#   tw <- length(strsplit(as.character(maxit1), "")[[1]]) + 1L
+  tw <- nchar(as.character(maxit1)) + 1
+  if(!exists("b.size")) b.size <- length(bids$initial)
+  # K is penalty for IC
+  if (is.null(K)) K <- log(b.size)
+  
+  beta <- list()
+  intvar <- list()
+  for (j in nx) {
+    if(length(vardist[[j]]) == 0){
+      intvar[[j]] <- "(Intercept)"
+      ncolu <- 1
+    } else {
+      intvar[[j]] <- c("(Intercept)",vardist[[j]])
+      ncolu <- length(intvar[[j]])
+    }
+    beta[[j]] <- matrix(0, nrow = maxit1, ncol = ncolu)
+    colnames(beta[[j]]) <- intvar[[j]]
+  }
+  if (!is.null(coef_start)) {
+    initialize <- FALSE
     for (j in nx) {
-      if(length(vardist[[j]]) == 0){
-        intvar[[j]] <- "(Intercept)"
-        ncolu <- 1
-      } else {
-        intvar[[j]] <- c("(Intercept)",vardist[[j]])
-        ncolu <- length(intvar[[j]])
-      }
-      beta[[j]] <- matrix(0, nrow = maxit1, ncol = ncolu)
-      colnames(beta[[j]]) <- intvar[[j]]
+      beta[[j]][1, ] <- coef_start[[j]]
     }
-    if (!is.null(coef_start)) {
-      initialize <- FALSE
+  }
+  
+  #beta.grad <- beta
+  powerset.list <- powerset(nx)[-1]
+  if (!is.null(length_ps))
+    powerset.list <- powerset.list[sapply(powerset.list, length) == length_ps]
+  
+  # used for formatting cat() output if verbose = TRUE
+  ll <- which.max(sapply(powerset.list, length))
+  pset_fmt <- paste0("%-", max(sapply(powerset.list[ll], function(x) nchar(paste(x, collapse = ", ")))), "s")                                      
+  
+  if (initialize) {
+    if (!is.null(family$initialize)) {
+      betai <- list()
       for (j in nx) {
-        beta[[j]][1, ] <- coef_start[[j]]
-      }
-    }
-    
-    #beta.grad <- beta
-    powerset.list <- powerset(nx)[-1]
-    if (!is.null(length_ps))
-      powerset.list <- powerset.list[sapply(powerset.list, length) == length_ps]
-
-    # used for formatting cat() output if verbose = TRUE
-    ll <- which.max(sapply(powerset.list, length))
-    pset_fmt <- paste0("%-", max(sapply(powerset.list[ll], function(x) nchar(paste(x, collapse = ", ")))), "s")                                      
-    
-    if (initialize) {
-      if (!is.null(family$initialize)) {
-        betai <- list()
-        for (j in nx) {
-          if (!is.null(family$initialize[[j]])) {
-            linkfun <- make.link2(family$links[j])$linkfun
-            beta[[j]][1L, "(Intercept)"] <- mean(linkfun(family$initialize[[j]](data[batch_ids[[1]], y], )), na.rm = TRUE)
-            
-          }
+        if (!is.null(family$initialize[[j]])) {
+          linkfun <- make.link2(family$links[j])$linkfun
+          beta[[j]][1L, "(Intercept)"] <- mean(linkfun(family$initialize[[j]](data[bids$initial, y], )), na.rm = TRUE)
+          
         }
       }
     }
-    df    <- sum(sapply(beta, function(b) sum(b[1, ] != 0)))
-    err01 <- .Machine$double.eps ^ (1 / 2)
-    err02 <- err01 * 2 * b.size
-    # err02 is the denominator for central numeric differentiation.  b.size makes
-    # gradient magnitute for different sample sizes comparable this translates
-    # maximum log likelihood to maximum average loglikelihood
-    # https://stats.stackexchange.com/questions/267847/motivation-for-average-log-likelihood
+  }
+  df    <- sum(sapply(beta, function(b) sum(b[1, ] != 0)))
+  err01 <- .Machine$double.eps ^ (1 / 2)
+  err02 <- err01 * 2 * b.size
+  # err02 is the denominator for central numeric differentiation.  b.size makes
+  # gradient magnitute for different sample sizes comparable this translates
+  # maximum log likelihood to maximum average loglikelihood
+  # https://stats.stackexchange.com/questions/267847/motivation-for-average-log-likelihood
+  
+  ma <- function(x, order = 20) {
+    ma1 <- filter(x, rep(1 / order, order), sides = 1)
+    ma2 <- rev(filter(rev(x), rep(1 / order, order), sides = 1))
+    return(ifelse(is.na(ma1), ma2, ma1))
+  }
+  
+  # If oos_batch is 'next' we would like to use the next batch for
+  # validation. Thus we need to keep two sets of batch IDs and store
+  # the batch ids of the current ($current) as well as the next ($next)
+  # iteration into our `bids` list.
+  #
+  # After each iteration $current is overwritten with $next and a new
+  # the new batch IDs for the $next iteration are added.
+  # When reaching maxit1, $next will be set to $initial (first batch).
+  bids$current = bids$initial # Set current to batch 1,
+  bids$`next`  = get_batch_ids(batch_ids, i = 2, N = N) # next to batch 2
+  
+  bs_fun <- function(coef_list, yi, X, yoos, Xoos, nu = 0.1, nu_int = 0.05, eps = 0.1, eps_int = 0.1,
+                     intvar, vardist, b.size = length(X[[1]]), cap = 0, i = 1) {
     
-    ma <- function(x, order = 20) {
-      ma1 <- filter(x, rep(1 / order, order), sides = 1)
-      ma2 <- rev(filter(rev(x), rep(1 / order, order), sides = 1))
-      return(ifelse(is.na(ma1), ma2, ma1))
+    coef_list_new <- coef_list
+    eta <- etaoos <- list()
+    
+    for (j in nx) {
+      ## Setup linear predictor.
+      etaoos[[j]] <- drop(Xoos[[j]] %*% coef_list_new[[j]])
+      eta[[j]]    <- drop(X[[j]] %*% coef_list_new[[j]])
     }
     
-    bs_fun <- function(coef_list, yi, X, yoos, Xoos, nu = 0.1, nu_int = 0.05, eps = 0.1, eps_int = 0.1,
-                       intvar, vardist, b.size = length(X[[1]]), cap = 0, i = 1) {
+    lloos <- family$loglik(yoos, family$map2par(etaoos))
+    
+    # best subset intercept updating
+    sign.list <- setNames(rep(-Inf, length(nx)), nx)
+    
+    for (j in nx) {
       
-      coef_list_new <- coef_list
-      eta <- etaoos <- list()
+      ## Get coefficients and setup.
+      tbeta    <- coef_list_new[[j]]
+      ## Positive.
+      tbeta[1] <- tbeta[1] + err01
+      eta[[j]] <- drop(X[[j]] %*% tbeta)
+      ll1 <- family$loglik(yi, family$map2par(eta))
       
-      for (j in nx) {
-        ## Setup linear predictor.
-        etaoos[[j]] <- drop(Xoos[[j]] %*% coef_list_new[[j]])
-        eta[[j]]    <- drop(X[[j]] %*% coef_list_new[[j]])
+      ## Negative
+      tbeta[1] <- tbeta[1] - 2 * err01
+      eta[[j]] <- drop(X[[j]] %*% tbeta)
+      ll2 <- family$loglik(yi, family$map2par(eta))
+      
+      grad <- (ll1 - ll2) / err02
+      sign.list[[j]] <- grad
+      
+      tbeta <- coef_list_new[[j]]
+    }
+    
+    pset <- powerset.list
+    for (j in nx) {
+      if (sign.list[[j]] == -Inf) {
+        ok <- !grepl(j, pset)
+        pset <- pset[ok]
       }
+    }
+    
+    if (length(pset) != 0) {
+      beta.wip <- beta.final <- list()
+      for (j in nx){
+        beta.wip[[j]] <- beta.final[[j]] <- coef_list_new[[j]]
+      }  
+      # ic.old is the old information criterion insample
+      # without penalty for complexity, i.e. -2*logLik. K = 0 is default.
+      ic.old <- -2 * lloos 
       
-      lloos <- family$loglik(yoos, family$map2par(etaoos))
+      for (l in 1:length(pset)) {
+        # ps <- !is.na(pset[l,])
+        sign.list2 <- sign.list[pset[[l]]]
+        gnorm <- sqrt(sum(sign.list2 ^ 2))
+        
+        if (gnorm > eps_int) {
+          sign.list2 <- eps_int * sign.list2 / gnorm
+        }
+        
+        for (ij in pset[[l]]) {
+          sign.list2[ij] <- ifelse(i < 0.8 * maxit1 & abs(sign.list2[ij]) < nu_int * eps_int,
+                                   sign(sign.list2[ij]) * nu_int * eps_int,
+                                   sign.list2[ij])
+        }
+        
+        for (j in pset[[l]]) {
+          grad <- sign.list2[[j]]
+          coef_list_new[[j]][1] <- coef_list_new[[j]][1] + grad
+        }
+        
+        
+        ## keep update only if oos information crit improves
+        for (j in nx)
+          etaoos[[j]] <- drop(Xoos[[j]] %*% coef_list_new[[j]])
+        
+        ll <- family$loglik(yoos, family$map2par(etaoos))
+        ic.new <- -2 * ll 
+        if (ic.new < ic.old) {
+          # keep current try
+          for (j in nx)
+            beta.final[[j]] <- coef_list_new[[j]]
+          ps.final <- pset[[l]]
+          ic.old   <- ic.new
+        }
+        for (j in pset[[l]])
+          coef_list_new[[j]] <- beta.wip[[j]]
+        
+      } # this bracket is for pset
       
-      # best subset intercept updating
-      sign.list <- setNames(rep(-Inf, length(nx)), nx)
+      # save best beta
+      for (j in nx){
+        coef_list_new[[j]] <- beta.final[[j]]
+        eta[[j]]           <- drop(X[[j]] %*% coef_list_new[[j]])
+      }
+    }
+    
+    
+    sign.list <- pos.list <- setNames(rep(-Inf, length(nx)), nx)
+    
+    for (j in nx) {
+      ## Get coefficients and setup.
+      nc <- length(intvar[[j]]) - 1
       
-      for (j in nx) {
-       
-        ## Get coefficients and setup.
-        tbeta    <- coef_list_new[[j]]
-        ## Positive.
-        tbeta[1] <- tbeta[1] + err01
-        eta[[j]] <- drop(X[[j]] %*% tbeta)
-        ll1 <- family$loglik(yi, family$map2par(eta))
+      if (nc > 0) {
+        
+        eta[[j]] <- eta[[j]] + err01
+        ll1      <- family$d(yi, family$map2par(eta), log = TRUE)
         
         ## Negative
-        tbeta[1] <- tbeta[1] - 2 * err01
-        eta[[j]] <- drop(X[[j]] %*% tbeta)
-        ll2 <- family$loglik(yi, family$map2par(eta))
+        eta[[j]] <- eta[[j]] - 2 * err01
+        ll2      <- family$d(yi, family$map2par(eta), log = TRUE)
         
-        grad <- (ll1 - ll2) / err02
+        grad     <- (ll1 - ll2) / (2 * err01)
+        eta[[j]] <- eta[[j]] + err01
+        
+        cc <- try(cor(grad, X[[j]][, vardist[[j]], drop = FALSE]), F)
+        #[,-1]))
+        cc[is.na(cc)] <- 0
+        if (is.numeric(cc)) {
+          ## Select update
+          jj <- which.max(abs(cc)) + 1
+        } else {
+          jj <- 1
+        } # interecept if cor gives error
+        
+        
+        if (max(abs(cc)) < cap) {
+          grad <- 0
+        } else {
+          # average partial derivative with respect to best variable
+          grad <- t(grad) %*% X[[j]][, intvar[[j]][jj], drop = FALSE] / b.size 
+        }
+        
         sign.list[[j]] <- grad
-        
-        tbeta <- coef_list_new[[j]]
+        pos.list[[j]]  <- jj # position in intvar
       }
-      
-      pset <- powerset.list
-      for (j in nx) {
-        if (sign.list[[j]] == -Inf) {
-          ok <- !grepl(j, pset)
-          pset <- pset[ok]
-        }
+    } # end j in nx loop
+    
+    ps.final <- "no par"
+    pset     <- powerset.list
+    for (j in nx) {
+      if (sign.list[[j]] == 0 | sign.list[[j]] == -Inf) {
+        ok   <- !grepl(j, pset)
+        pset <- pset[ok]
       }
-      
-      if (length(pset) != 0) {
-        beta.wip <- beta.final <- list()
-        for (j in nx){
-          beta.wip[[j]] <- beta.final[[j]] <- coef_list_new[[j]]
-        }  
-        # ic.old is the old information criterion insample
-        # without penalty for complexity, i.e. -2*logLik. K = 0 is default.
-        ic.old <- -2 * lloos 
-        
-        for (l in 1:length(pset)) {
-          # ps <- !is.na(pset[l,])
-          sign.list2 <- sign.list[pset[[l]]]
-          gnorm <- sqrt(sum(sign.list2 ^ 2))
-          
-          if (gnorm > eps_int) {
-            sign.list2 <- eps_int * sign.list2 / gnorm
-          }
-
-          for (ij in pset[[l]]) {
-            sign.list2[ij] <- ifelse(i < 0.8 * maxit1 & abs(sign.list2[ij]) < nu_int * eps_int,
-                                     sign(sign.list2[ij]) * nu_int * eps_int,
-                                     sign.list2[ij])
-          }
-          
-          for (j in pset[[l]]) {
-            grad <- sign.list2[[j]]
-            coef_list_new[[j]][1] <- coef_list_new[[j]][1] + grad
-          }
-          
-          
-          ## keep update only if oos information crit improves
-          for (j in nx)
-            etaoos[[j]] <- drop(Xoos[[j]] %*% coef_list_new[[j]])
-
-          ll <- family$loglik(yoos, family$map2par(etaoos))
-          ic.new <- -2 * ll 
-          if (ic.new < ic.old) {
-            # keep current try
-            for (j in nx)
-              beta.final[[j]] <- coef_list_new[[j]]
-            ps.final <- pset[[l]]
-            ic.old   <- ic.new
-          }
-          for (j in pset[[l]])
-            coef_list_new[[j]] <- beta.wip[[j]]
-          
-        } # this bracket is for pset
-        
-        # save best beta
-        for (j in nx){
-          coef_list_new[[j]] <- beta.final[[j]]
-          eta[[j]]           <- drop(X[[j]] %*% coef_list_new[[j]])
-        }
-      }
-      
-      
-      sign.list <- pos.list <- setNames(rep(-Inf, length(nx)), nx)
-      
-      for (j in nx) {
-        ## Get coefficients and setup.
-        nc <- length(intvar[[j]]) - 1
-        
-        if (nc > 0) {
-          
-          eta[[j]] <- eta[[j]] + err01
-          ll1      <- family$d(yi, family$map2par(eta), log = TRUE)
-          
-          ## Negative
-          eta[[j]] <- eta[[j]] - 2 * err01
-          ll2      <- family$d(yi, family$map2par(eta), log = TRUE)
-          
-          grad     <- (ll1 - ll2) / (2 * err01)
-          eta[[j]] <- eta[[j]] + err01
-          
-          cc <- try(cor(grad, X[[j]][, vardist[[j]], drop = FALSE]), F)
-          #[,-1]))
-          cc[is.na(cc)] <- 0
-          if (is.numeric(cc)) {
-            ## Select update
-            jj <- which.max(abs(cc)) + 1
-          } else {
-            jj <- 1
-          } # interecept if cor gives error
-          
-          
-          if (max(abs(cc)) < cap) {
-            grad <- 0
-          } else {
-            # average partial derivative with respect to best variable
-            grad <- t(grad) %*% X[[j]][, intvar[[j]][jj], drop = FALSE] / b.size 
-          }
-          
-          sign.list[[j]] <- grad
-          pos.list[[j]]  <- jj # position in intvar
-        }
-      } # end j in nx loop
-                                    
-      ps.final <- "no par"
-      pset     <- powerset.list
-      for (j in nx) {
-        if (sign.list[[j]] == 0 | sign.list[[j]] == -Inf) {
-          ok   <- !grepl(j, pset)
-          pset <- pset[ok]
-        }
-      }
-      
-      if (length(pset) != 0) {
-        ## beta.final <- list()
-        for (j in nx)
-          beta.final[[j]] <- coef_list_new[[j]]
-        #ic.old <- ic
-        
-        beta.wip <- list()
-        for (j in nx)
-          beta.wip[[j]] <- coef_list_new[[j]]
-        for (l in 1:length(pset)) {
-          # ps <- !is.na(pset[l,])
-          sign.list2 <- sign.list[pset[[l]]]
-          gnorm      <- sqrt(sum(sign.list2 ^ 2))
-          
-          if (gnorm > eps) {
-            sign.list2 <- eps * sign.list2 / gnorm
-          }
-          for (ij in pset[[l]]) {
-            sign.list2[ij] <- ifelse(i < 0.8 * maxit1 & abs(sign.list2[ij]) < nu * eps,
-                                     sign(sign.list2[ij]) * nu * eps,
-                                     sign.list2[ij])
-          }
-          
-          for (j in pset[[l]]) {
-            jj   <- pos.list[[j]]
-            grad <- sign.list2[[j]]
-            
-            coef_list_new[[j]][intvar[[j]][jj]] <- coef_list_new[[j]][intvar[[j]][jj]] + grad
-          }
-          
-          ## keep update only if oos information crit improves
-          for (j in nx)
-            etaoos[[j]] <- drop(Xoos[[j]] %*% coef_list_new[[j]])
-          ll <- family$loglik(yoos, family$map2par(etaoos))
-          ic.new <- -2 * ll 
-          if (ic.new < ic.old) {
-            # keep current try
-            for (j in nx)
-              beta.final[[j]] <- coef_list_new[[j]]
-            ps.final <- pset[[l]]
-            ic.old   <- ic.new
-          }
-          for (j in pset[[l]])
-            coef_list_new[[j]] <- beta.wip[[j]]
-          
-        } # this bracket is for pset
-        
-        # save best coefs
-        for (j in nx)
-          coef_list_new[[j]] <- beta.final[[j]]
-        
-      }
-      return(c(coef_list_new, "ic.old" = ic.old, "ps.final" = ps.final))
     }
     
-    #caps <- seq(0.2, 0.05, length.out = 5) # c(0.2, 0.15, 0.1, 0.5)
-    beta.list <- setNames(lapply(caps, FUN = function(x) beta), caps)
-    intvar1   <- intvar
-    vardist1  <- vardist
-    ll.list   <- list()
-    df.list   <- cs.list <- NULL
-    #seed <- rnorm(1)
-    #vardist = mfd$varnames
-
-    for (c in 1:length(caps)) {
-      ic.oos.list <- ic0.list   <- NULL
-      ll0.list    <- lloos.list <- 0
-      beta    <- beta.list[[paste(caps[c])]]
-      cap     <- caps[c]
-      intvar  <- intvar1
-      vardist <- vardist1
-      cap     <- c(rep(cap, length.out = maxit), rep(0, length.out = maxit_refit))
+    if (length(pset) != 0) {
+      ## beta.final <- list()
+      for (j in nx)
+        beta.final[[j]] <- coef_list_new[[j]]
+      #ic.old <- ic
       
-      # # reordering, helpfull for small data to avoid bad starting batches
-      # batch_ids[1:maxit] <- batch_ids[sample(1:maxit)]
-      # batch_ids[(maxit+1):maxit1] <- batch_ids[sample((maxit+1):maxit1)]
+      beta.wip <- list()
+      for (j in nx)
+        beta.wip[[j]] <- coef_list_new[[j]]
+      for (l in 1:length(pset)) {
+        # ps <- !is.na(pset[l,])
+        sign.list2 <- sign.list[pset[[l]]]
+        gnorm      <- sqrt(sum(sign.list2 ^ 2))
+        
+        if (gnorm > eps) {
+          sign.list2 <- eps * sign.list2 / gnorm
+        }
+        for (ij in pset[[l]]) {
+          sign.list2[ij] <- ifelse(i < 0.8 * maxit1 & abs(sign.list2[ij]) < nu * eps,
+                                   sign(sign.list2[ij]) * nu * eps,
+                                   sign.list2[ij])
+        }
+        
+        for (j in pset[[l]]) {
+          jj   <- pos.list[[j]]
+          grad <- sign.list2[[j]]
+          
+          coef_list_new[[j]][intvar[[j]][jj]] <- coef_list_new[[j]][intvar[[j]][jj]] + grad
+        }
+        
+        ## keep update only if oos information crit improves
+        for (j in nx)
+          etaoos[[j]] <- drop(Xoos[[j]] %*% coef_list_new[[j]])
+        ll <- family$loglik(yoos, family$map2par(etaoos))
+        ic.new <- -2 * ll 
+        if (ic.new < ic.old) {
+          # keep current try
+          for (j in nx)
+            beta.final[[j]] <- coef_list_new[[j]]
+          ps.final <- pset[[l]]
+          ic.old   <- ic.new
+        }
+        for (j in pset[[l]])
+          coef_list_new[[j]] <- beta.wip[[j]]
+        
+      } # this bracket is for pset
       
-      for (i in 2:maxit1) {
-        # deselect non selected variables for updating if maxit_refit > 0
-        if (i == maxit +1) {
-          for (j in nx) {
-            cond <- beta[[j]][maxit,] != 0
-            cond["(Intercept)"] <- TRUE
-            intvar[[j]]  <- intvar[[j]][cond]
-            vardist[[j]] <- vardist[[j]][cond[-1]]
-            # beta[[j]][maxit+1,] <- beta[[j]][maxit,] <- beta.list[[paste(caps[1])]][[j]][1,]
-          }
-        }
-        
-        ## out of sample
-        if (oos_batch == "next") {
-          i.oos <- if (i != maxit1) i + 1 else 1
-        } else if (oos_batch == "same") {
-          i.oos <- i
-        } else if (oos_batch == "random") {
-          i.oos <- sample(maxit1, 1)
-        }
-        
-        batch.oos <- batch_ids[[i.oos]]
-        
-        ## Extract response.
-        yi    <- as.matrix(data[batch_ids[[i]],y])
-        y.oos <- as.matrix(data[batch.oos,y])
-        
-        # draw batchwise from big.matrix and scale
-        XX    <- as.matrix(data[batch_ids[[i]],vars])
-        XXoos <- as.matrix(data[batch.oos,vars])
-        if (scalex) {
-          XX    <- myscale(XX, x_mu = x_mu, x_sd = x_sd)
-          XXoos <- myscale(XXoos, x_mu = x_mu, x_sd = x_sd)
-        }
-        X <- Xoos <- list()
+      # save best coefs
+      for (j in nx)
+        coef_list_new[[j]] <- beta.final[[j]]
+      
+    }
+    return(c(coef_list_new, "ic.old" = ic.old, "ps.final" = ps.final))
+  }
+  
+  #caps <- seq(0.2, 0.05, length.out = 5) # c(0.2, 0.15, 0.1, 0.5)
+  beta.list <- setNames(lapply(caps, FUN = function(x) beta), caps)
+  intvar1   <- intvar
+  vardist1  <- vardist
+  ll.list   <- list()
+  df.list   <- cs.list <- NULL
+  #seed <- rnorm(1)
+  #vardist = mfd$varnames
+  
+  for (c in 1:length(caps)) {
+    ic.oos.list <- ic0.list   <- NULL
+    ll0.list    <- lloos.list <- 0
+    beta    <- beta.list[[paste(caps[c])]]
+    cap     <- caps[c]
+    intvar  <- intvar1
+    vardist <- vardist1
+    cap     <- c(rep(cap, length.out = maxit), rep(0, length.out = maxit_refit))
+    
+    # # reordering, helpfull for small data to avoid bad starting batches
+    # batch_ids[1:maxit] <- batch_ids[sample(1:maxit)]
+    # batch_ids[(maxit+1):maxit1] <- batch_ids[sample((maxit+1):maxit1)]
+    
+    for (i in 2:maxit1) {
+      
+      # Update batch ids; write next -> current and draw
+      # a new next (initial if i == maxit, else i + 1).
+      bids$current <- bids$`next`
+      bids$`next`  <- if (i == maxit1) bids$initial else get_batch_ids(batch_ids, i = i + 1, N = N)
+      
+      # deselect non selected variables for updating if maxit_refit > 0
+      if (i == maxit +1) {
         for (j in nx) {
-          ## Save last iteration.
-          beta[[j]][i, ]      <- beta[[j]][i - 1L, ]
-          X[[j]]              <- cbind( "(Intercept)" = rep(1,b.size), XX[,setdiff(colnames(beta[[j]]), "(Intercept)" )])
-          Xoos[[j]]           <- cbind( "(Intercept)" = rep(1,b.size),XXoos[,setdiff(colnames(beta[[j]]), "(Intercept)" )])
-          colnames(Xoos[[j]]) <- colnames(X[[j]]) <- c("(Intercept)", setdiff(colnames(beta[[j]]), "(Intercept)" ))
+          cond <- beta[[j]][maxit,] != 0
+          cond["(Intercept)"] <- TRUE
+          intvar[[j]]  <- intvar[[j]][cond]
+          vardist[[j]] <- vardist[[j]][cond[-1]]
+          # beta[[j]][maxit+1,] <- beta[[j]][maxit,] <- beta.list[[paste(caps[1])]][[j]][1,]
         }
-       
-        coef_list <- list()
-        for (j in nx) {
-          coef_list[[j]] <- beta[[j]][i-1, ]
-        }
-        
-        coef_list_new <- bs_fun(coef_list = coef_list, yi = yi, X = X, yoos = y.oos, Xoos = Xoos,
-                                nu = nu, nu_int = nu_int, eps = eps[i], eps_int = eps_int[i],
-                                intvar = intvar, vardist = vardist, b.size = nrow(X[[1]]), cap = cap[i])
-        
-        for (j in nx) {
-          beta[[j]][i, ] <- coef_list_new[[j]]
-        }
-
-        # Selected best subset
-        ps.final <- unlist(coef_list_new[grep("ps.final", names(coef_list_new))])
-        
-        # #Nonzero coefs
-        df <- sum(sapply(beta, function(b) sum(b[i, ] != 0)))
-        # perhaps change to:
-        # ic.old <- coef_list_new[["ic.old"]] + K * df
-        
-        # BIC = -2*loglik_batch + log(batch.size) * df              ####* (nrow(X[[1]])/N)
-        ic.old     <- coef_list_new[["ic.old"]] + K * df #* (nrow(X[[1]])/N)
-        lloos.list <- c(lloos.list,  ic.old)
-        ll0.list   <- c(lloos.list,  -coef_list_new[["ic.old"]]/2)
-        
-        if (verbose) {
-          if (ia) cat("\r")
-          cat("thres = ",  formatC(cap[1], width = tw, flag = " "),
-              ", iter = ", formatC(i, width = tw, flag = " "),
-              ", AIC = ",  formatC(round(ic.old, 4L), width = tw, flag = " "),
-              ", df = ",   formatC(df, width = tw, flag = " "),
-              ", ",        sprintf(pset_fmt, paste(ps.final, collapse = ", ")),
-              if (!ia) "\n" else NULL,
-              sep = "")
-        }
-        ## plot AIC and coef-paths
-        if (plot & (i %% 10 == 0)) {
-          
-          par(mfrow = n2mfrow(length(nx) + 1))
-          plot(y = lloos.list, x = 1:i, xlab = "Iteration", ylab = "AIC")
-          
-          if (i > 5) {
-            fit2 <- lowess(y = lloos.list, x = 1:i)
-            lines(fit2)
-          }
-          for (j in nx) {
-            matplot(beta[[j]][1:i, ], type = "l", lty = 1, main = j,
-                    xlab = "Iteration", ylab = "Coefficients")
-          }
-
-        }
-        
       }
       
+      # Draw batch IDs for out of sample batch
+      # Overwrite $oos in the bids list.
+      bids$oos <- if (oos_batch == "next") {
+        bids$`next`
+      } else if (oos_batch == "random") {
+        get_batch_ids(batch_ids, i = sample(maxit1, 1), N = N)
+      } else if (oos_batch == "same") {
+        bids$current
+      } else stop("Whoops, unknown oos_batch case; we should never end up here")
       
-      ll.list[[c]] <- ll0.list
+      
+      ## Extract response.
+      yi    <- as.matrix(data[bids$current,y])
+      y.oos <- as.matrix(data[bids$oos,y])
+      
+      # draw batchwise from big.matrix and scale
+      XX    <- as.matrix(data[bids$current,vars])
+      XXoos <- as.matrix(data[bids$oos,vars])
+      if (scalex) {
+        XX    <- myscale(XX, x_mu = x_mu, x_sd = x_sd)
+        XXoos <- myscale(XXoos, x_mu = x_mu, x_sd = x_sd)
+      }
+      X <- Xoos <- list()
+      for (j in nx) {
+        ## Save last iteration.
+        beta[[j]][i, ]      <- beta[[j]][i - 1L, ]
+        X[[j]]              <- cbind( "(Intercept)" = rep(1,b.size), XX[,setdiff(colnames(beta[[j]]), "(Intercept)" )])
+        Xoos[[j]]           <- cbind( "(Intercept)" = rep(1,b.size),XXoos[,setdiff(colnames(beta[[j]]), "(Intercept)" )])
+        colnames(Xoos[[j]]) <- colnames(X[[j]]) <- c("(Intercept)", setdiff(colnames(beta[[j]]), "(Intercept)" ))
+      }
+      
+      coef_list <- list()
+      for (j in nx) {
+        coef_list[[j]] <- beta[[j]][i-1, ]
+      }
+      
+      coef_list_new <- bs_fun(coef_list = coef_list, yi = yi, X = X, yoos = y.oos, Xoos = Xoos,
+                              nu = nu, nu_int = nu_int, eps = eps[i], eps_int = eps_int[i],
+                              intvar = intvar, vardist = vardist, b.size = nrow(X[[1]]), cap = cap[i])
+      
+      for (j in nx) {
+        beta[[j]][i, ] <- coef_list_new[[j]]
+      }
+      
+      # Selected best subset
+      ps.final <- unlist(coef_list_new[grep("ps.final", names(coef_list_new))])
+      
+      # #Nonzero coefs
+      df <- sum(sapply(beta, function(b) sum(b[i, ] != 0)))
+      # perhaps change to:
+      # ic.old <- coef_list_new[["ic.old"]] + K * df
+      
+      # BIC = -2*loglik_batch + log(batch.size) * df              ####* (nrow(X[[1]])/N)
+      ic.old     <- coef_list_new[["ic.old"]] + K * df #* (nrow(X[[1]])/N)
+      lloos.list <- c(lloos.list,  ic.old)
+      ll0.list   <- c(lloos.list,  -coef_list_new[["ic.old"]]/2)
       
       if (verbose) {
-        cs <- mean(lloos.list[(maxit1-30):maxit1])
-        
         if (ia) cat("\r")
-        cat(paste0("Thres = ",round(caps[c],4), ", df = ",df, ", AIC = ", round(cs,3)), "\n", sep = "")
+        cat("thres = ",  formatC(cap[1], width = tw, flag = " "),
+            ", iter = ", formatC(i, width = tw, flag = " "),
+            ", AIC = ",  formatC(round(ic.old, 4L), width = tw, flag = " "),
+            ", df = ",   formatC(df, width = tw, flag = " "),
+            ", ",        sprintf(pset_fmt, paste(ps.final, collapse = ", ")),
+            if (!ia) "\n" else NULL,
+            sep = "")
       }
-      
-      # save betas
-      beta.list[[paste(cap[1])]] <- beta
-      
-      # Continue the selection steps with smaller thresholds 
-      if (cap[1] != caps[length(caps)]) {
-        for (j in nx) {
-          beta.list[[paste(caps[c + 1])]][[j]][1,] <- beta[[j]][maxit, ]
+      ## plot AIC and coef-paths
+      if (plot & (i %% 10 == 0)) {
+        
+        par(mfrow = n2mfrow(length(nx) + 1))
+        plot(y = lloos.list, x = 1:i, xlab = "Iteration", ylab = "AIC")
+        
+        if (i > 5) {
+          fit2 <- lowess(y = lloos.list, x = 1:i)
+          lines(fit2)
         }
+        for (j in nx) {
+          matplot(beta[[j]][1:i, ], type = "l", lty = 1, main = j,
+                  xlab = "Iteration", ylab = "Coefficients")
+        }
+        
       }
       
-      df.list <- c(df.list, df)
-      cs.list <- c(cs.list, cs)
-      #if(cmax[c] < 0) break
     }
     
     
-    final <- which.min(cs.list)
-    print(paste("selected thres = ", round(caps[final], 3)))
-    for (j in nx) beta[[j]] <- beta.list[[final]][[j]][(maxit + 1):maxit1, ]
-    wmax <- maxit1
-
-    return(list(coefficients = beta,
-                logLik = ll0.list[[final]],
-                maxit = list(var_selection = maxit, refitting = maxit_refit),
-                iter = maxit_refit, cap = caps[final]))
+    ll.list[[c]] <- ll0.list
+    
+    if (verbose) {
+      cs <- mean(lloos.list[(maxit1-30):maxit1])
+      
+      if (ia) cat("\r")
+      cat(paste0("Thres = ",round(caps[c],4), ", df = ",df, ", AIC = ", round(cs,3)), "\n", sep = "")
+    }
+    
+    # save betas
+    beta.list[[paste(cap[1])]] <- beta
+    
+    # Continue the selection steps with smaller thresholds 
+    if (cap[1] != caps[length(caps)]) {
+      for (j in nx) {
+        beta.list[[paste(caps[c + 1])]][[j]][1,] <- beta[[j]][maxit, ]
+      }
+    }
+    
+    df.list <- c(df.list, df)
+    cs.list <- c(cs.list, cs)
+    #if(cmax[c] < 0) break
+  }
+  
+  
+  final <- which.min(cs.list)
+  print(paste("selected thres = ", round(caps[final], 3)))
+  for (j in nx) beta[[j]] <- beta.list[[final]][[j]][(maxit + 1):maxit1, ]
+  wmax <- maxit1
+  
+  return(list(coefficients = beta,
+              logLik = ll0.list[[final]],
+              maxit = list(var_selection = maxit, refitting = maxit_refit),
+              iter = maxit_refit, cap = caps[final]))
 } # end of function: sdr.thresdesc
-
-# Helper Function to Draw Batch IDs (row ids)
-#
-# Intended for package internal use only; thus no sanity checks.
-# x is the user object (NULL, single numeric, or a list
-# of prepared indices for the iterations). "i" is the
-# batch we would like to draw, N the total sample size.
-get_batch_ids <- function(x, i, N) {
-    if (is.null(x))         seq_len(N) # simply 1:N
-    else if (is.list(x))    x[[i]]     # i'th user batch
-    else if (is.numeric(x)) sample(seq_len(N), x, replace = FALSE) # random
-    else stop("problems drawing batch IDs")
-}
-
+            
 
 # best subset gradboosting with correlation filtering
 # noncyclic is a special case with length_ps = 1
