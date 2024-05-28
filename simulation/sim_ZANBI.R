@@ -63,7 +63,7 @@ sim <- function(nobs = 500, nnoise = 100, rho = 0){
   if(TRUE){
     maxit = NA
     
-    fam <- tF(ZANBI())
+    fam <- ZANBI()
     
     ## (1) True model
     ftrue <- list(y ~ x1 + x3 + x5 + x6,
@@ -213,7 +213,7 @@ sim <- function(nobs = 500, nnoise = 100, rho = 0){
       update(f, nu ~ .)
     )
     
-    fam <- tF(ZANBI())
+    fam <- ZANBI()
     
     # Threshold descent
     ptm <- proc.time()
@@ -345,7 +345,7 @@ sim <- function(nobs = 500, nnoise = 100, rho = 0){
       update(f, nu ~ .)
     )
     
-    fam <- tF(ZANBI())
+    fam <- ZANBI()
     
     if(nobs > 10000) d <- as.ffdf(d)
     # Threshold descent bw
@@ -473,7 +473,7 @@ sim <- function(nobs = 500, nnoise = 100, rho = 0){
     f <- paste("y ~", paste(f, collapse = "+"))
     f <- as.formula(f)
     
-    fam <- tF(ZANBI())
+    fam <- ZANBI()
     
     ptm <- proc.time()
     maxitlss <- ifelse(nobs >= 5000, 12000/2.5, 8000/2.5)
@@ -606,7 +606,7 @@ sim <- function(nobs = 500, nnoise = 100, rho = 0){
     f <- paste("y ~", paste(f, collapse = "+"))
     f <- as.formula(f)
     
-    fam <- tF(ZANBI())
+    fam <- ZANBI()
     
     # gradient boosting model b is input for vardeselect
     timegradboost <- time
@@ -749,7 +749,7 @@ sim <- function(nobs = 500, nnoise = 100, rho = 0){
       update(f, nu ~ .)
     )
     
-    fam <- tF(ZANBI())
+    fam <- ZANBI()
     
     # bamlss stability selection
     q = max(round(sqrt(6+nnoise)*3), 8)
@@ -920,7 +920,7 @@ sim <- function(nobs = 500, nnoise = 100, rho = 0){
       update(f, nu ~ .)
     )
     
-    fam <- tF(ZANBI())
+    fam <- ZANBI()
     
     # SDR1 noncyclic updating, cap = 0 and early stopping selection via bic
     ptm <- proc.time()
@@ -1058,7 +1058,7 @@ sim <- function(nobs = 500, nnoise = 100, rho = 0){
       update(f, nu ~ .)
     )
     
-    fam <- tF(ZANBI())
+    fam <- ZANBI()
     
     # SDR2 best subset updating, cap = 0 and early stopping selection via bic
     ptm <- proc.time()
@@ -1196,7 +1196,7 @@ sim <- function(nobs = 500, nnoise = 100, rho = 0){
       update(f, nu ~ .)
     )
     
-    fam <- tF(ZANBI())
+    fam <- ZANBI()
     
     # SDR3 noncyclic updating, CF = TRUE and early stopping selection via bic
     ptm <- proc.time()
@@ -1334,7 +1334,7 @@ sim <- function(nobs = 500, nnoise = 100, rho = 0){
       update(f, nu ~ .)
     )
     
-    fam <- tF(ZANBI())
+    fam <- ZANBI()
     
     # SDR2 best subset updating, cap = 0 and early stopping selection via bic
     ptm <- proc.time()
@@ -1473,7 +1473,7 @@ sim <- function(nobs = 500, nnoise = 100, rho = 0){
       update(f, nu ~ .)
     )
     
-    fam <- tF(ZANBI())
+    fam <- ZANBI()
     
     # SDR1 noncyclic updating, cap = 0 and early stopping selection via bic
     ptm <- proc.time()
@@ -1611,7 +1611,7 @@ sim <- function(nobs = 500, nnoise = 100, rho = 0){
       update(f, nu ~ .)
     )
     
-    fam <- tF(ZANBI())
+    fam <- ZANBI()
     
     # SDR2 best subset updating, cap = 0 and early stopping selection via bic
     ptm <- proc.time()
@@ -1749,7 +1749,7 @@ sim <- function(nobs = 500, nnoise = 100, rho = 0){
       update(f, nu ~ .)
     )
     
-    fam <- tF(ZANBI())
+    fam <- ZANBI()
     
     # SDR3 noncyclic updating, CF = TRUE and early stopping selection via bic
     ptm <- proc.time()
@@ -1887,7 +1887,7 @@ sim <- function(nobs = 500, nnoise = 100, rho = 0){
       update(f, nu ~ .)
     )
     
-    fam <- tF(ZANBI())
+    fam <- ZANBI()
     
     # SDR2 best subset updating, CF =TRUE and early stopping selection via bic
     ptm <- proc.time()
