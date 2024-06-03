@@ -1,10 +1,11 @@
 # stagewise
 
-Estimation of distributional regression using an efficient stagewise algorithm
+Estimation of distributional regression using an efficient stagewise algorithm.
 
-All supplementary materials can be found in the R scripts
+The associated preprint "Stagewise Boosting Distributional Regression" can be found in:
+https://doi.org/10.48550/arXiv.2405.18288
 
-* [simulation.R] TBA
+All supplementary materials can be found in the R scripts in the simulation or application folder
 
  
 # Installation
