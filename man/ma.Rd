@@ -19,8 +19,9 @@ ma(x, order = 20)
 }
 
 \details{
- Calculates for every entry i of a vector a moving average using the following rule:
- If i < order, then compute the average of i up to i + order. Else, compute the average of i - order up to i. 
+  Calculates for every entry \code{i} of a vector a moving average using the following rule:
+  If \code{i < order}, then compute the average of \code{i} up to \code{i + order}. Else,
+  compute the average of \code{i - order} up to \code{i}. 
 }
 
 
@@ -29,8 +30,7 @@ ma(x, order = 20)
 }
 
 \examples{
-\donttest{
-set.seed(123)
+\dontrun{set.seed(123)
 
 ## Draw 100 uniform distributed variables.
 nobs <- 1000
@@ -41,14 +41,14 @@ colnames(d) <- paste("x", 1:p, sep = "")
 d <- as.data.frame(d)
 
 ## Create additive predictors.
-d$eta.mu <- d$x1 + 2 * d$x2 + 0.5 * d$x3 - 1*d$x4 
-d$eta.sigma <- 0.5 * d$x3 + 0.25 * d$x4 -
+d$mu <- d$x1 + 2 * d$x2 + 0.5 * d$x3 - 1*d$x4 
+d$sigma <- 0.5 * d$x3 + 0.25 * d$x4 -
   0.25 * d$x5  - 0.5 * d$x6 
 
 ## Draw normal distributed
 ## response for given predictors.
-d$y <- rNO(nobs, mu = d$eta.mu,
-           sigma = exp(d$eta.sigma))
+d$y <- rNO(nobs, mu = d$mu,
+           sigma = exp(d$sigma))
 
 ## Model formula.
 f <- as.formula(paste("y ~ ",
@@ -69,9 +69,10 @@ nf <- newformula(b, mstop = itermax_bic, name = "y")
 b_final <- sdr(formula = nf, data = d,
                family = NO, CF = FALSE, maxit = 300, updating = "bs",
                coef_start = cb, batch_ids = 500)
+
 plot(b_final)
-}
-}
+}}
 
 \keyword{regression}
 \keyword{models}
+
