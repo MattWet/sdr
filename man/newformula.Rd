@@ -22,19 +22,20 @@ newformula(object, mstop = NULL, name = NULL)
 }
 
 \details{
- Our stagewise framework supports a two step modelfitting procedure. The first step
- is to identify the important variabels with the standard \link{sdr} function, with the argument updating any of 
- c("bs", "cyclic", "noncyclic") and correlation filtering turned on, \code{CF = TRUE}. Then, extract the important 
- variabels with \link{coef}\code{(..., refit = TRUE)}  and the updated model formula with \link{newformula}\code{(...)}. 
- Finally, refit without correlation filtering and with the updated formula and coefficients. See example below.
+  Our stagewise framework supports a two step modelfitting procedure. The first step
+  is to identify the important variabels with the standard \link{\link{sdr}} function,
+  with the argument \code{updating} any of \code{"bs"}, \code{"cyclic"} or \code{"noncyclic"}
+  and correlation filtering turned on, \code{CF = TRUE}. Then, extract the important 
+  variables with \code{coef(..., refit = TRUE)} and the updated model formula with
+  \code{newformula(...)}. Finally, refit without correlation filtering and with
+  the updated formula and coefficients. See example below.
 }
 
 \seealso{
   \code{\link{sdr}}.
 }
 
-\examples{\donttest{
-set.seed(123)
+\examples{\dontrun{set.seed(123)
 
 ## Draw 100 uniform distributed variables.
 nobs <- 1000
@@ -45,14 +46,14 @@ colnames(d) <- paste("x", 1:p, sep = "")
 d <- as.data.frame(d)
 
 ## Create additive predictors.
-d$eta.mu <- d$x1 + 2 * d$x2 + 0.5 * d$x3 - 1*d$x4 
-d$eta.sigma <- 0.5 * d$x3 + 0.25 * d$x4 -
+d$mu <- d$x1 + 2 * d$x2 + 0.5 * d$x3 - 1*d$x4 
+d$sigma <- 0.5 * d$x3 + 0.25 * d$x4 -
   0.25 * d$x5  - 0.5 * d$x6 
 
 ## Draw normal distributed
 ## response for given predictors.
-d$y <- rNO(nobs, mu = d$eta.mu,
-           sigma = exp(d$eta.sigma))
+d$y <- rNO(nobs, mu = d$mu,
+           sigma = exp(d$sigma))
 
 ## Model formula.
 f <- as.formula(paste("y ~ ",
@@ -78,9 +79,8 @@ nf <- newformula(b, mstop = itermax_bic, name = "y")
 b_final <- sdr(formula = nf, data = d, updating = "bs",
                family = NO, CF = FALSE, maxit = 300,
                coef_start = cb)
-
-}
-}
+}}
 
 \keyword{regression}
 \keyword{models}
+
