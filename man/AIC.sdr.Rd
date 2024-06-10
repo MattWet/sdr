@@ -3,16 +3,17 @@
 \alias{BIC.sdr}
 \alias{logLik.sdr}
 
-
-
 \title{
-  AIC, BIC and logLik Method for Stagewise Model.
+  AIC, BIC and logLik Method.
 }
 
 \description{
-  AIC and BIC calculate information criterion for each iteration of stagewise model with their respective penalization.
-  By default \code{AIC = -2*loglik + 2*df}, where \code{df} is the number of
-  non-zero coefficient in model, is computed. BIC uses \code{BIC = -2*loglik + K*df}, where K is the number of the sample size. 
+  AIC and BIC calculate the information criterion for each iteration of
+  stagewise boosted model with the respective penalization.
+  By default, \code{AIC = -2 * logLik + 2 * df} is calculated,
+  where \code{df} is the number of non-zero coefficients in the model.
+  BIC uses \code{BIC = -2 * logLik + K * df}, where K is the logarithm of
+  the number of obseravtions in the data used for estimation. 
   In the batchwise updating case the number corresponds to the batchsize.
   \code{logLik.sdr} computes the log likelihood of the model. 
 }
@@ -39,20 +40,16 @@
   
 }
 
-\details{
-  When comparing models to the same data, the smaller the AIC or BIC, the better the fit.
-  For the log-likelihood, higher values are better. 
-}
-
 \value{
-  A vector with class "sdr_AIC" for BIC and AIC function and a vector of class "logLik.sdr" for function logLik.
+  A vector of class "sdr_AIC" for object retuened by \code{AIC()} and \code{BIC()}, for
+  objects returned ny \code{logLik()} an object of class "logLik.sdr".
 }
 
 \seealso{
   \code{\link{sdr}}.
 }
 
-\examples{\donttest{ 
+\examples{\dontrun{## Set the seed for reproducibility.
 set.seed(123)
 
 ## Draw 100 uniform distributed variables.
@@ -64,14 +61,14 @@ colnames(d) <- paste("x", 1:p, sep = "")
 d <- as.data.frame(d)
 
 ## Create additive predictors.
-d$eta.mu <- d$x1 + 2 * d$x2 + 0.5 * d$x3 - 1*d$x4 
-d$eta.sigma <- 0.5 * d$x3 + 0.25 * d$x4 -
+d$mu <- d$x1 + 2 * d$x2 + 0.5 * d$x3 - 1*d$x4 
+d$sigma <- 0.5 * d$x3 + 0.25 * d$x4 -
   0.25 * d$x5  - 0.5 * d$x6 
 
 ## Draw normal distributed
 ## response for given predictors.
-d$y <- rNO(nobs, mu = d$eta.mu,
-           sigma = exp(d$eta.sigma))
+d$y <- rNO(nobs, mu = d$mu,
+           sigma = exp(d$sigma))
 
 ## Model formula.
 f <- as.formula(paste("y ~ ",
@@ -86,10 +83,7 @@ b <- sdr(formula = f, data = d, CF = TRUE, updating = "bs",
 bic <- BIC(b)
 aic <- AIC(b)
 ll <- logLik(b)
-
-
-}
-}
+}}
 
 \keyword{regression}
 \keyword{models}
