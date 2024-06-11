@@ -8,6 +8,7 @@ bibentry(
 	),
 	title       = "Stagewise Boosting Distributional Regression",
   institution = "arXiv",
+  year        = "2024"
 	doi         = "10.48550/arXiv.2405.18288",
 	header = "To cite stagewise in publications use:"
 )
