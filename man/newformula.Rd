@@ -23,7 +23,7 @@ newformula(object, mstop = NULL, name = NULL)
 
 \details{
   Our stagewise framework supports a two step modelfitting procedure. The first step
-  is to identify the important variabels with the standard \link{\link{sdr}} function,
+  is to identify the important variabels with the standard \code{\link{sdr}} function,
   with the argument \code{updating} any of \code{"bs"}, \code{"cyclic"} or \code{"noncyclic"}
   and correlation filtering turned on, \code{CF = TRUE}. Then, extract the important 
   variables with \code{coef(..., refit = TRUE)} and the updated model formula with

@@ -64,7 +64,7 @@ sdr(formula, family = NULL, data = NULL, batch_ids = NULL,
   Tibshirani RJ (2015).
   A General Framework for Fast Stagewise Algorithms.
   Journal of Machine Learning Research 
-  \bold{16}(78), 2543--2588. \url{http://jmlr.org/papers/v16/tibshirani15a.html}
+  \bold{16}(78), 2543--2588. \url{https://jmlr.org/papers/v16/tibshirani15a.html}
 
   Wetscher M, Seiler J, Stauffer R, Umlauf N (2024).
   Stagewise Boosting Distributional Regression.

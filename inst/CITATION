@@ -1,0 +1,14 @@
+bibentry(
+	bibtype     = "TechReport",
+	author      = c(
+		person("Mattias", "Wetscher"),
+		person("Johannes", "Seiler"),
+		person("Reto", "Stauffer"),
+		person("Nikolaus", "Umlauf")
+	),
+	title       = "Stagewise Boosting Distributional Regression",
+  institution = "arXiv",
+	doi         = "10.48550/arXiv.2405.18288",
+	header = "To cite stagewise in publications use:"
+)
+
