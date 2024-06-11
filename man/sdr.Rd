@@ -1,7 +1,6 @@
 \name{sdr}
 \alias{sdr}
 
-
 \title{
   Stagewise Distributional Regression
 }
@@ -19,7 +18,6 @@ sdr(formula, family = NULL, data = NULL, batch_ids = NULL,
   CF = TRUE, cap = NULL,  caps = NULL,  scalex = TRUE, refitting = TRUE,
   eps = 0.01, nu = 0.1, ncaps = 10, quick_ffdf = FALSE, ...)
 }
-
 
 \arguments{
   \item{formula}{A formula or extended formula, i.e., the formula can be a
@@ -62,26 +60,15 @@ sdr(formula, family = NULL, data = NULL, batch_ids = NULL,
   Nikolaus Umlauf \email{Nikolaus.Umlauf@uibk.ac.at}
 }
 
-\references{
-  Mayr A., Fenske N, Hofner B, Kneib T, Schmid M (2012).
-  Generalized additive models for location, scale and shape for
-  high-dimensional data - a flexible approach based on boosting.
-  \emph{Journal of the Royal Statistical Society, Series C (Applied Statistics)}
-  \bold{61}(3), 403--427. \doi{10.1111/j.1467-9876.2011.01033.x}
-
-  Rigby, R.A. and Stasinopoulos, D.M. (2005)
-  Generalized Additive Models for Location, Scale and Shape.
-  \emph{Journal of the Royal Statistical Society, Series C (Applied Statistics)}
-  \bold{54}(3), 507--554. \doi{10.1111/j.1467-9876.2005.00510.x}
-  
+\references{  
   Tibshirani RJ (2015).
   A General Framework for Fast Stagewise Algorithms.
   Journal of Machine Learning Research 
   \bold{16}(78), 2543--2588. \url{http://jmlr.org/papers/v16/tibshirani15a.html}
 
-  Umlauf N, Klein N, Zeileis A (2019). BAMLSS: Bayesian Additive Models for Location,
-  Scale and Shape (and Beyond). \emph{Journal of Computational and Graphical Statistics},
-  \bold{27}(3), 612--627. \doi{10.1080/10618600.2017.1407325}
+  Wetscher M, Seiler J, Stauffer R, Umlauf N (2024).
+  Stagewise Boosting Distributional Regression.
+  \emph{arXiv}. \doi{10.48550/arXiv.2405.18288}
 }
 
 \seealso{
@@ -98,14 +85,12 @@ sdr(formula, family = NULL, data = NULL, batch_ids = NULL,
 }
 
 \value{
-  An object of class \code{"sdr"}. Contains, among other, the data used for modelfitting, 
+  An object of class \code{"sdr"}. Contains, among other, the data used for fitting, 
   the evolution of coefficient paths and the evolution of the log-likelihood.
 }
 
-
 \examples{
-\donttest{
-set.seed(123)
+\dontrun{set.seed(123)
 
 ## Draw 100 uniform distributed variables.
 nobs <- 2000
@@ -116,21 +101,20 @@ colnames(d) <- paste("x", 1:p, sep = "")
 d <- as.data.frame(d)
 
 ## Create additive predictors.
-d$eta.mu <- d$x1 + 2 * d$x2 + 0.5 * d$x3 - 1*d$x4 
-d$eta.sigma <- 0.5 * d$x3 + 0.25 * d$x4 -
+d$mu <- d$x1 + 2 * d$x2 + 0.5 * d$x3 - 1*d$x4 
+d$sigma <- 0.5 * d$x3 + 0.25 * d$x4 -
   0.25 * d$x5  - 0.5 * d$x6 
 
 ## Draw normal distributed
 ## response for given predictors.
-d$y <- rNO(nobs, mu = d$eta.mu,
-           sigma = exp(d$eta.sigma))
+d$y <- rNO(nobs, mu = d$mu,
+           sigma = exp(d$sigma))
 
-# testing data
+## Testing data.
 dt <- d[1001:2000,]
 
-# training data
+## Training data.
 d <- d[1:1000,]
-
 
 ## Model formula.
 f <- as.formula(paste("y ~ ",
@@ -158,15 +142,15 @@ b_final <- sdr(formula = nf, data = d, updating = "bs",
                family = NO, CF = FALSE, maxit = 300,
                coef_start = cb)
 
-# Plot and summary
+## Plot and summary.
 plot(b_final)
 summary(b_final, mstart = 100, mstop = 300)
 
-# Residual diagnostics
+## Residual diagnostics.
 res <- residuals(b_final)
 plot(res)
 
-# Prediction and logLik on new testing data
+## Prediction and logLik on new testing data
 pred <- predict(b_final, newdata = dt, type = "parameter")
 l1 <- sum(dnorm(dt$y, mean = pred$mu, sd = pred$sigma, log = TRUE))
 
@@ -189,7 +173,7 @@ b_final <- sdr(formula = nf, data = d, updating = "bs",
 
 plot(b_final)
 
-# Prediction and logLik on new testing data
+## Prediction and logLik on new testing data.
 pred <- predict(b_final, newdata = dt, type = "parameter")
 l2 <- sum(dnorm(dt$y, mean = pred$mu, sd = pred$sigma, log = TRUE))
 
@@ -212,7 +196,7 @@ b_final <- sdr(formula = nf, data = d, updating = "noncyclic",
 
 plot(b_final)
 
-# Prediction and logLik on new testing data
+## Prediction and logLik on new testing data.
 pred <- predict(b_final, newdata = dt, type = "parameter")
 l3 <- sum(dnorm(dt$y, mean = pred$mu, sd = pred$sigma, log = TRUE))
 
@@ -226,14 +210,13 @@ b <- sdr(formula = f, data = d, updating = "thresdesc",
 ## Coefficient paths from refitting of best model.
 plot(b, which = "coefficients")
 
-# Prediction and logLik on new testing data
+## Prediction and logLik on new testing data.
 pred <- predict(b, newdata = dt, type = "parameter")
 l4 <- sum(dnorm(dt$y, mean = pred$mu, sd = pred$sigma, log = TRUE))
 
 ## Comparison of out of sample logLik
 c(l1, l2, l3, l4)
-}
-}
+}}
 
 \keyword{models}
 \keyword{regression}

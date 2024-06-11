@@ -3,10 +3,10 @@
 \alias{plot.sdr_residuals}
 
 \title{
-  Stagewise Model Residuals
+  Model Residuals
 }
 \description{
-  Function to compute quantile and response residuals.
+  Function to compute (randomized) quantile and response residuals.
 }
 
 \usage{
@@ -21,14 +21,16 @@
 \arguments{
   \item{object}{Object returned from function \code{\link{sdr}}.}
   \item{type}{Character, \code{"quantile"} computes median residuals and \code{"response"}
-    computes mean residuals with respect to the mu-predictor. The latter only makes sense if
-    the mu-predictor corresponds to the mean as for a normal distribution.}
+    computes mean residuals with respect to the mu-predictor.
+    The latter only makes sense if the mu-predictor corresponds to the mean
+    as for a normal distribution.}
   \item{nsamps}{To get a first feeling it can
     be useful to compute residuals only based on \code{nsamps} samples, i.e., \code{nsamps}
     specifies the number of samples which are extracted on equidistant intervals.}
   \item{x}{Object returned from function \code{residuals.sdr()}.}
-  \item{which}{Should a histogram with kernel density estimates be plotted, a qq-plot or a worm plot? 
-  Any subset of c("hist-resid", "qq-resid", "wp") can be specified. Per default all three are plotted.}
+  \item{which}{Should a histogram with kernel density estimates be plotted,
+    a qq-plot or a worm plot? Any subset of c("hist-resid", "qq-resid", "wp")
+    can be specified. Per default all three are plotted.}
   \item{spar}{Should graphical parameters be set by the plotting function?}
   \item{\dots}{Not used.}
 }
@@ -57,8 +59,7 @@
 }
 
 \examples{
-\donttest{
-set.seed(123)
+\dontrun{set.seed(123)
 
 ## Draw 100 uniform distributed variables.
 nobs <- 1000
@@ -103,11 +104,10 @@ b_final <- sdr(formula = nf, data = d, updating = "bs",
                coef_start = cb)
 
 
-# Residual diagnostics
+## Residual diagnostics.
 res <- residuals(b_final)
 plot(res)
-}
-}
+}}
 
 \keyword{regression}
 \keyword{models}

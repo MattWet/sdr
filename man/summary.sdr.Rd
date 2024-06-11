@@ -2,11 +2,11 @@
 \alias{summary.sdr}
 
 \title{
-  Summary for SDR
+  Summary Output
 }
 
 \description{
-  Summary table of stagewise model.
+  Summary output of fitted stagewise model.
 }
 
 \usage{
@@ -27,9 +27,10 @@
 }
 
 \details{
-  Computes summary statistics of estimated stagewise model. Coefficient estimates are computed with 
-  respect to the specified range of mstart and mstop. Returned are both mean and quantiles of coefficients.
-  Additionally log likelihood of mstart and mstop is also returned.
+  Computes summary statistics of estimated stagewise model.
+  Coefficient estimates are computed with respect to the specified range of
+  \code{mstart} and \code{mstop}. Returned are both mean and quantiles of coefficients.
+  Additionally log likelihood of \code{mstart} and \code{mstop} is also returned.
   
 }
 
@@ -38,8 +39,7 @@
 }
 
 \examples{
-\donttest{
-set.seed(123)
+\dontrun{set.seed(123)
 
 ## Draw 100 uniform distributed variables.
 nobs <- 1000
@@ -83,11 +83,10 @@ b_final <- sdr(formula = nf, data = d, updating = "bs",
                family = NO, CF = FALSE, maxit = 300,
                coef_start = cb)
 
-
-# summary
+## Summary output.
 summary(b_final)
-}
-}
+}}
 
 \keyword{regression}
 \keyword{models}
+

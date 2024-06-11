@@ -6,13 +6,13 @@
 }
 
 \description{
-  Function to compute predictions given new data from fitted sdr object. 
+  Function to compute predictions given new data from fitted \code{\link{sdr}} object. 
 }
 
 \usage{
 \method{predict}{sdr}(object, newdata = NULL, type = c("link", "parameter"), 
-drop = TRUE, mstart = NULL, mstop = NULL, iterations = NULL, 
-model = NULL, what = c("mean", "matrix"), ...)
+  drop = TRUE, mstart = NULL, mstop = NULL, iterations = NULL, 
+  model = NULL, what = c("mean", "matrix"), ...)
 }
 
 \arguments{
@@ -25,20 +25,24 @@ model = NULL, what = c("mean", "matrix"), ...)
   \item{drop}{Logical, if predictions for only one model are returned,
     the list structure is dropped.}
   \item{mstart}{Integer, prediction is based on mean of coefficients from
-    iteration \code{mstart} up to \code{mstop}. If no mstart is provided, mstart is set to median of iterations.}
-  \item{iterations}{Explicitly define which iterations should be considered for prediction. Input can be a vector. 
-    If not provided, then iteration from \code{mstart} up to \code{mstop} are the default.}
+    iteration \code{mstart} up to \code{mstop}. If no \code{mstart} is provided,
+    \code{mstart} is set to median of iterations.}
+  \item{iterations}{Explicitly define which iterations should be considered
+    for prediction. Input can be a vector. If not provided, then iteration from
+    \code{mstart} up to \code{mstop} are the default.}
   \item{mstop}{Integer, prediction is based on mean of coefficients from
-    iteration \code{mstart} up to \code{mstop}. If no mstop is provided, mstop is set to last iteration.}
+    iteration \code{mstart} up to \code{mstop}. If no \code{mstop} is provided,
+    \code{mstop} is set to last iteration.}
   \item{model}{Character or integer, specifies the model for which predictions should be computed.}
-  \item{what}{ Compute either mean of coefficients along iterations or use complete matrix of coefficients
-    where each column correspond to a iteration for computing the predictions.}
+  \item{what}{Compute either mean of coefficients along iterations or
+    use complete matrix of coefficients where each column correspond
+    to a iteration for computing the predictions.}
   \item{\dots}{Not used.}
 }
 
 \value{
-  The predictions are either at the linear predictor scale or transformed to the distributional
-  parameter scale. 
+  A named list. The predictions are either at the linear predictor
+  scale or transformed to the distributional parameter scale. 
 }
 
 \seealso{
@@ -46,8 +50,7 @@ model = NULL, what = c("mean", "matrix"), ...)
 }
 
 \examples{
-\donttest{
-set.seed(123)
+\dontrun{set.seed(123)
 
 ## Draw 100 uniform distributed variables.
 nobs <- 1000
@@ -58,14 +61,14 @@ colnames(d) <- paste("x", 1:p, sep = "")
 d <- as.data.frame(d)
 
 ## Create additive predictors.
-d$eta.mu <- d$x1 + 2 * d$x2 + 0.5 * d$x3 - 1*d$x4 
-d$eta.sigma <- 0.5 * d$x3 + 0.25 * d$x4 -
+d$mu <- d$x1 + 2 * d$x2 + 0.5 * d$x3 - 1*d$x4 
+d$sigma <- 0.5 * d$x3 + 0.25 * d$x4 -
   0.25 * d$x5  - 0.5 * d$x6 
 
 ## Draw normal distributed
 ## response for given predictors.
-d$y <- rNO(nobs, mu = d$eta.mu,
-           sigma = exp(d$eta.sigma))
+d$y <- rNO(nobs, mu = d$mu,
+           sigma = exp(d$sigma))
 
 ## Model formula.
 f <- as.formula(paste("y ~ ",
@@ -91,11 +94,9 @@ b_final <- sdr(formula = nf, data = d, updating = "bs",
                family = NO, CF = FALSE, maxit = 300,
                coef_start = cb)
 
-
-# Prediction
+## Prediction.
 pred <- predict(b_final)
-}
-}
+}}
 
 \keyword{regression}
 \keyword{models}
