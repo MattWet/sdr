@@ -2,7 +2,7 @@ Package: stagewise
 Type: Package
 Title: Stagewise Distributional Regression
 Version: 1.0.1
-Date: 2024-05-06
+Date: 2024-06-11
 Authors@R: c(person(given = "Mattias", family = "Wetscher", role = c("aut", "cre"), email = "Mattias.Wetscher@uibk.ac.at",
                comment = c(ORCID = "0000-0002-9982-3001")),
              person(given = "Nikolaus", family = "Umlauf", role = "aut", email = "Nikolaus.Umlauf@uibk.ac.at",
