@@ -542,6 +542,20 @@ alpha2cap2 <- function(alpha = 0.01, nnobs = NULL, nvars = NULL, mean = 0) {
     return(cap)
 }
 
+sort_interaction_terms <- function(terms) {
+  interaction_terms <- terms[grepl(":", terms)]
+  non_interaction_terms <- terms[!grepl(":", terms)]
+  
+  interaction_terms_sorted <- interaction_terms[order(interaction_terms)]
+  interaction_terms_sorted <- sapply(strsplit(interaction_terms_sorted, ":"), function(x) paste(sort(x), collapse = ":"))
+  
+  if(length(non_interaction_terms) < 1) non_interaction_terms <- NULL
+  if(length(interaction_terms_sorted) < 1) interaction_terms_sorted <- NULL
+  
+  terms_sorted <- unique(c(non_interaction_terms, interaction_terms_sorted))
+  
+  return(terms_sorted)
+}
 
 ## Stagewise distributional regression (SDR).
 sdr <- function(formula,
@@ -617,6 +631,7 @@ sdr <- function(formula,
       if(!length(mfd$varnames[[i]]) > 0){
         mfd$formula[[i]] <- ~ 1
       } else {
+	mfd$varnames[[i]] <- sort_interaction_terms(mfd$varnames[[i]])
         mfd$formula[[i]] <- as.formula(paste(" ~ ", paste0(mfd$varnames[[i]], collapse = "+")))
       } 
     }
@@ -678,10 +693,12 @@ sdr <- function(formula,
         }
         data <- cbind(data[,y], model.matrix(data = data.frame(data), object = formula_all))
         colnames(data)[1:length(y)] <- y
+              
         data <- as.matrix(data)
       }
     }
     
+    colnames(data) <- sort_interaction_terms(colnames(data))
     if(!light & !inherits(data, "ffdf")){
       mfd$y <- as.matrix(data[,y])
       colnames(mfd$y) <- y
