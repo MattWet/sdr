@@ -557,6 +557,54 @@ sort_interaction_terms <- function(terms) {
   return(terms_sorted)
 }
 
+replace_categories_with_factors <- function(categorical_formula, data) {
+  # Extract factor columns and their levels
+  factor_columns <- names(data)[sapply(data, is.factor)]
+  factor_levels <- lapply(factor_columns, function(f) levels(data[[f]]))
+  names(factor_levels) <- factor_columns
+  
+  # Extract terms from the formula
+  terms <- attr(terms(categorical_formula), "term.labels")
+  
+  # Function to replace category with factor name
+  replace_term <- function(term) {
+    for (factor in factor_columns) {
+      for (level in factor_levels[[factor]]) {
+        if (term == paste0(factor, level)) {
+          return(factor)
+        }
+      }
+    }
+    return(term)
+  }
+  
+  # Replace categories in each term
+  replaced_terms <- sapply(terms, function(term) {
+    if (grepl(":", term)) {
+      # Interaction term
+      interactions <- unlist(strsplit(term, ":"))
+      replaced_interactions <- sapply(interactions, replace_term)
+      paste(replaced_interactions, collapse = ":")
+    } else {
+      # Regular term
+      replace_term(term)
+    }
+  })
+  
+  # Remove duplicate terms
+  unique_terms <- unique(replaced_terms)
+  
+  # Construct the new formula string
+  formula_str <- paste(" ~", paste(unique_terms, collapse = " + "))
+  
+  # Convert the string back to a formula
+  new_formula <- as.formula(formula_str)
+  
+  return(new_formula)
+}
+
+
+
 ## Stagewise distributional regression (SDR).
 sdr <- function(formula,
                 family = NULL,
@@ -620,31 +668,50 @@ sdr <- function(formula,
     formula <- rep(formula, length = length(family$names))
     names(formula) <- family$names
     
+    
     # Starting to prepare the objects for estimation
     mfd <- list(varnames = list(), formula = list())
     terms <- NULL
+    
+    mfd$y <- y <- all.vars(formula(as.Formula(formula[[1]]),
+                                   lhs = 1, rhs = 0, drop = TRUE))
+    
     # list of model formula
     # Intercept only
     for (i in names(formula)) {
       fi <- as.Formula(formula[[i]])
-      mfd$varnames[[i]] <-  unname(attr(terms(fi), "term.labels"))
+      
+      # try is error iff model.matrix can not be build, then there are categories in the formula
+      # else, if no error, then formula is in factor form
+      mfd$varnames[[i]] <- try(setdiff(colnames(model.matrix(formula(as.Formula(formula[[i]]),
+        lhs = 0, rhs = 1, drop = TRUE), data[NULL,])),"(Intercept)"), silent = TRUE)
+      
+      # Check if an error occurred, then extract the names of formula directly. Then the formula was in the categorical form
+if (inherits(mfd$varnames[[i]], "try-error")) {
+  mfd$varnames[[i]] <- unname(attr(terms(fi), "term.labels"))
+}
+      
       if(!length(mfd$varnames[[i]]) > 0){
         mfd$formula[[i]] <- ~ 1
+       
       } else {
 	mfd$varnames[[i]] <- sort_interaction_terms(mfd$varnames[[i]])
         mfd$formula[[i]] <- as.formula(paste(" ~ ", paste0(mfd$varnames[[i]], collapse = "+")))
+                
       } 
     }
 
-    mfd$y <- y <- all.vars(formula(as.Formula(formula[[1]]),
-                                   lhs = 1, rhs = 0, drop = TRUE))
+    
 
     # All variables that are needed
     vars <- unique(unlist(mfd$varnames))
+    
     if(!length(vars) > 0){
       formula_all <- ~ 1
+      
     } else {
       formula_all <- as.formula(paste(" ~ ", paste0(vars, collapse = "+")))
+      
     }
     
     if(inherits(data, "big.matrix")){
@@ -679,6 +746,7 @@ sdr <- function(formula,
             cat(counter, "\r")
             
           }
+          #TODO check formula for ffrowapply
           ff::ffrowapply(fun(infile[i1:i2, ], f = formula, file = outfile), X = infile, BATCHSIZE = BATCHSIZE)
           
           return(ff::read.csv.ffdf(file = outfile))
@@ -691,7 +759,10 @@ sdr <- function(formula,
           data <- as.matrix(data)
           colnames(data) <- y
         }
-        data <- cbind(data[,y], model.matrix(data = data.frame(data), object = formula_all))
+        
+        if(all(vars %in% colnames(data.frame(data)))) {fff <- formula_all
+        } else {fff <- replace_categories_with_factors(formula_all, data)}
+        data <- cbind(data[,y], model.matrix(data = data.frame(data), object = fff))
         colnames(data)[1:length(y)] <- y
               
         data <- as.matrix(data)
@@ -767,7 +838,7 @@ sdr <- function(formula,
     nvars <- max(sapply(names(formula), FUN = function(i) length(mfd$varnames[[i]])))
     
     # Correlation Filtering
-    # todo: adapt for different nobs in parameter
+    # TODO: adapt for different nvars in parameter
     if (CF & nvars != 0) {
       if (is.null(cap)) {
         cap <- alpha2cap2(alpha = 0.05, nnobs = nobs, nvars = nvars, mean = 0)
@@ -3056,7 +3127,7 @@ summary.sdr <- function(object,
   cat("\nCall:\n")
   print(object$call)
   cat("---\n")
-  print(object$family, full = FALSE)
+  print(object$family[["family"]], full = FALSE)
   cat("*---\n")
   
   
