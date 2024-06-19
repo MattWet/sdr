@@ -542,19 +542,20 @@ alpha2cap2 <- function(alpha = 0.01, nnobs = NULL, nvars = NULL, mean = 0) {
     return(cap)
 }
 
+
 sort_interaction_terms <- function(terms) {
-  interaction_terms <- terms[grepl(":", terms)]
-  non_interaction_terms <- terms[!grepl(":", terms)]
+  sorted_terms <- sapply(terms, function(term) {
+    if (grepl(":", term)) {
+      # Split the interaction term, sort the components, and then rejoin them
+      components <- unlist(strsplit(term, ":"))
+      sorted_components <- paste(sort(components), collapse = ":")
+      return(sorted_components)
+    } else {
+      return(term)
+    }
+  })
   
-  interaction_terms_sorted <- interaction_terms[order(interaction_terms)]
-  interaction_terms_sorted <- sapply(strsplit(interaction_terms_sorted, ":"), function(x) paste(sort(x), collapse = ":"))
-  
-  if(length(non_interaction_terms) < 1) non_interaction_terms <- NULL
-  if(length(interaction_terms_sorted) < 1) interaction_terms_sorted <- NULL
-  
-  terms_sorted <- unique(c(non_interaction_terms, interaction_terms_sorted))
-  
-  return(terms_sorted)
+  return(unname(sorted_terms))
 }
 
 replace_categories_with_factors <- function(categorical_formula, data) {
@@ -686,7 +687,7 @@ sdr <- function(formula,
       mfd$varnames[[i]] <- try(setdiff(colnames(model.matrix(formula(as.Formula(formula[[i]]),
         lhs = 0, rhs = 1, drop = TRUE), data[NULL,])),"(Intercept)"), silent = TRUE)
       
-      # Check if an error occurred, then extract the names of formula directly. Then the formula was in the categorical form
+      # Check if an error occurred, then extract the names of formula directly. Implicating the formula was in the categorical form.
 if (inherits(mfd$varnames[[i]], "try-error")) {
   mfd$varnames[[i]] <- unname(attr(terms(fi), "term.labels"))
 }
@@ -760,9 +761,9 @@ if (inherits(mfd$varnames[[i]], "try-error")) {
           colnames(data) <- y
         }
         
-        if(all(vars %in% colnames(data.frame(data)))) {fff <- formula_all
+        if(all(vars %in% colnames(as.data.frame(data)))) {fff <- formula_all
         } else {fff <- replace_categories_with_factors(formula_all, data)}
-        data <- cbind(data[,y], model.matrix(data = data.frame(data), object = fff))
+        data <- cbind(data[,y], model.matrix(data = as.data.frame(data), object = fff))
         colnames(data)[1:length(y)] <- y
               
         data <- as.matrix(data)
@@ -773,7 +774,7 @@ if (inherits(mfd$varnames[[i]], "try-error")) {
     if(!light & !inherits(data, "ffdf")){
       mfd$y <- as.matrix(data[,y])
       colnames(mfd$y) <- y
-      mfd$X <- data[,vars]
+      mfd$X <- data[,-1]
     }
 
     x_mu <- x_sd <- NULL
@@ -2908,10 +2909,20 @@ predict.sdr <-
     # All variables that are needed
     vars <- unique(unlist(object$varnames))
     if(!length(vars) > 0){
-      X <- model.matrix(object = ~ 1, data = data.frame(newdata))
-    } else {
-      formula_all <- as.formula(paste(" ~ ", paste0(vars, collapse = "+")))
-      X <- model.matrix(object = formula_all, data = data.frame(newdata))
+    X <- model.matrix(object = ~ 1, data = as.data.frame(newdata))
+  } else {
+    formula_all <- as.formula(paste(" ~ ", paste0(vars, collapse = "+")))
+    
+    if(all(vars %in% colnames(as.data.frame(newdata)))) {fff <- formula_all
+    } else {fff <- replace_categories_with_factors(formula_all, newdata)}
+    
+    X <- try(model.matrix(object = fff, data = as.data.frame(newdata)), silent = TRUE)
+    if(inherits(X, "try-error")) X <- newdata
+    
+    colnames(X) <- sort_interaction_terms(colnames(X))
+    
+ 
+      
     }
     
     if (!is.null(mstop)) {
@@ -3865,7 +3876,7 @@ rootogram <- function(model,
     
     if (is.null(newdata)) {
       newdata <- model[["model"]]
-      newdata <- data.frame(newdata, model$y)
+      newdata <- as.data.frame(newdata, model$y)
     }
     
     pred <- predict(object = model, newdata = newdata, type = "parameter",
