@@ -3100,8 +3100,8 @@ newformula <- function(object,
   return(coef)
 }
 
-
-
+## Extract family of model
+family.sdr <- function(object){return(object$family)}
 
 ## Summary method.
 summary.sdr <- function(object,
